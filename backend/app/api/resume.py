@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.user import User
 from app.models.resume import Resume
+from app.models.profile import Profile
+from app.models.skill import Skill
 import re
 import httpx
 from app.schemas.resume import (
@@ -16,7 +18,11 @@ from app.schemas.resume import (
 from app.api.deps import get_current_active_user
 from app.utils.file_storage import validate_and_save_upload, remove_file_safely
 from app.ai.resume_parser import extract_text_from_file
-from app.ai.section_classifier import classify_resume_sections
+from app.ai.section_classifier import (
+    classify_resume_sections,
+    extract_structured_profile_from_sections,
+    compute_profile_signature
+)
 from app.ai.skill_extractor import extract_resume_skill_profile
 
 router = APIRouter(prefix="/resume", tags=["Resume Management"])
@@ -45,16 +51,110 @@ def upload_resume(
         # 4. Extract skills with evidence from sections
         extracted_skills = extract_resume_skill_profile(sections, db)
         
-        # 5. Build structured JSON representation
+        # 4b. Automatically generate structured Candidate Profile from resume
+        default_title = filename.rsplit(".", 1)[0]
+        generated_profile = extract_structured_profile_from_sections(
+            sections=sections,
+            extracted_skills=extracted_skills,
+            fallback_title=current_user.full_name or default_title
+        )
+
+        # 4c. Check if an exact existing profile/resume with no changes in information already exists
+        new_sig = compute_profile_signature(generated_profile)
+        raw_norm = re.sub(r"\s+", " ", raw_text.strip().lower())
+
+        existing_resumes = db.query(Resume).filter(
+            Resume.user_id == current_user.id,
+            Resume.is_active == True
+        ).order_by(Resume.created_at.desc()).all()
+
+        is_exact_profile_match = False
+        existing_resume_id = None
+        existing_profile_title = None
+
+        for prev_res in existing_resumes:
+            prev_raw_norm = re.sub(r"\s+", " ", (prev_res.raw_text or "").strip().lower())
+            prev_struct = prev_res.structured_json or {}
+            prev_sig = compute_profile_signature({
+                "summary": prev_struct.get("summary") or "",
+                "phone": (prev_struct.get("contact_info") or {}).get("phone") or "",
+                "linkedin_url": (prev_struct.get("contact_info") or {}).get("linkedin") or "",
+                "github_url": (prev_struct.get("contact_info") or {}).get("github") or "",
+                "skills": prev_struct.get("skills") or prev_struct.get("extracted_skills") or [],
+                "experiences": prev_struct.get("experiences") or [],
+                "educations": prev_struct.get("educations") or [],
+                "projects": prev_struct.get("projects") or [],
+            })
+            if (prev_raw_norm and prev_raw_norm == raw_norm) or (prev_sig == new_sig and len(extracted_skills) > 0):
+                is_exact_profile_match = True
+                existing_resume_id = prev_res.id
+                existing_profile_title = prev_res.title
+                break
+
+        # Also check against current user's Master Profile if not matched yet
+        if not is_exact_profile_match:
+            user_profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+            if user_profile and (user_profile.experiences or user_profile.educations or user_profile.user_skills):
+                prof_skill_names = []
+                for us in user_profile.user_skills:
+                    sk = db.query(Skill).filter(Skill.id == us.skill_id).first()
+                    if sk:
+                        prof_skill_names.append(sk.canonical_name)
+                prof_sig = compute_profile_signature({
+                    "summary": user_profile.summary or "",
+                    "phone": user_profile.phone or "",
+                    "linkedin_url": user_profile.linkedin_url or "",
+                    "github_url": user_profile.github_url or "",
+                    "skills": prof_skill_names,
+                    "experiences": [
+                        {"company": e.company, "role_title": e.role_title, "bullets": e.bullets or []}
+                        for e in user_profile.experiences
+                    ],
+                    "educations": [
+                        {"institution": ed.institution, "degree": ed.degree}
+                        for ed in user_profile.educations
+                    ],
+                    "projects": [
+                        {"title": p.title}
+                        for p in user_profile.projects
+                    ],
+                })
+                if prof_sig == new_sig:
+                    is_exact_profile_match = True
+                    existing_resume_id = existing_resumes[0].id if existing_resumes else None
+                    existing_profile_title = user_profile.headline or "Master Career Profile"
+
+        if is_exact_profile_match:
+            profile_match_message = (
+                f"Exact existing profile found ('{existing_profile_title}') with no changes in information. "
+                "Would you like to make a new profile or use the existing profile for Job Match?"
+            )
+        else:
+            profile_match_message = (
+                "A candidate profile has been automatically generated from your resume. "
+                "Would you like to save it as a new profile?"
+            )
+
+        # 5. Build structured JSON representation (including structured profile items)
+        contact_merged = sections.get("contact_info", {}) or {}
+        if generated_profile.get("location") and not contact_merged.get("location"):
+            contact_merged["location"] = generated_profile["location"]
+
         structured_json = {
             "filename": filename,
-            "contact_info": sections.get("contact_info", {}),
-            "summary": sections.get("summary", ""),
+            "full_name": generated_profile.get("full_name") or current_user.full_name,
+            "headline": generated_profile.get("headline") or "",
+            "contact_info": contact_merged,
+            "summary": generated_profile.get("summary") or sections.get("summary", ""),
             "experience_raw": sections.get("experience_text", ""),
             "education_raw": sections.get("education_text", ""),
             "projects_raw": sections.get("projects_text", ""),
             "skills_raw": sections.get("skills_text", ""),
             "certifications_raw": sections.get("certifications_text", ""),
+            "experiences": generated_profile.get("experiences", []),
+            "educations": generated_profile.get("educations", []),
+            "projects": generated_profile.get("projects", []),
+            "skills": generated_profile.get("skills", []),
             "extracted_skills": extracted_skills
         }
         
@@ -70,7 +170,7 @@ def upload_resume(
         # 6. Save Resume to DB
         resume = Resume(
             user_id=current_user.id,
-            title=filename.rsplit(".", 1)[0],
+            title=default_title,
             source_type="uploaded",
             file_path=file_path,
             raw_text=raw_text,
@@ -95,8 +195,13 @@ def upload_resume(
             updated_at=resume.updated_at,
             extracted_skills=extracted_skills,
             detected_sections={
-                k: bool(v) for k, v in sections.items() if k != "raw_text"
-            }
+                k: bool(v) for k, v in sections.items() if k not in ("raw_text", "headline")
+            },
+            generated_profile=generated_profile,
+            is_exact_profile_match=is_exact_profile_match,
+            existing_resume_id=existing_resume_id or resume.id,
+            existing_profile_title=existing_profile_title or resume.title,
+            profile_match_message=profile_match_message
         )
     except HTTPException:
         remove_file_safely(file_path)

@@ -160,3 +160,33 @@ def test_resume_upload_and_create_api(test_client):
     list_res = client.get("/api/resume", headers=headers)
     assert list_res.status_code == 200
     assert len(list_res.json()) >= 2
+
+    # 6. Verify auto-generated profile and exact match detection
+    assert "generated_profile" in upload_data
+    assert upload_data["is_exact_profile_match"] is False
+    assert len(upload_data["generated_profile"]["experiences"]) >= 2
+    assert len(upload_data["generated_profile"]["educations"]) >= 1
+
+    # Save extracted profile as active profile
+    sync_res = client.post(
+        f"/api/profile/sync-from-resume?resume_id={resume_id}&replace=true&profile_title=Alex+Mercer+Profile",
+        headers=headers
+    )
+    assert sync_res.status_code == 200
+    synced_prof = sync_res.json()
+    assert len(synced_prof["experiences"]) >= 2
+    assert len(synced_prof["educations"]) >= 1
+    assert len(synced_prof["user_skills"]) >= 5
+
+    # Upload identical resume again -> should detect exact existing profile with no changes
+    dup_bytes = io.BytesIO(SAMPLE_RESUME_TEXT.encode("utf-8"))
+    dup_res = client.post(
+        "/api/resume/upload",
+        headers=headers,
+        files={"file": ("alex_mercer_copy.txt", dup_bytes, "text/plain")}
+    )
+    assert dup_res.status_code == 201
+    dup_data = dup_res.json()
+    assert dup_data["is_exact_profile_match"] is True
+    assert dup_data["existing_resume_id"] == resume_id
+    assert "Exact existing profile found" in dup_data["profile_match_message"]

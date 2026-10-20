@@ -154,7 +154,7 @@ Preferred Qualifications:
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-[#332D47] uppercase tracking-wider mb-1.5">
-              Select Candidate Resume
+              Select Candidate Profile / Resume
             </label>
             <select
               value={selectedResumeId}
@@ -162,11 +162,11 @@ Preferred Qualifications:
               className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] font-medium focus:outline-none focus:border-purple-500 focus:bg-white transition-colors"
             >
               {resumes.length === 0 ? (
-                <option value="">No resumes found - please create or upload one</option>
+                <option value="">No profile/resume found - please upload one first</option>
               ) : (
                 resumes.map(r => (
                   <option key={r.id} value={r.id}>
-                    {r.title} ({r.source_type})
+                    {r.title} ({r.source_type === 'uploaded' ? 'Extracted Profile' : 'Builder Profile'})
                   </option>
                 ))
               )}

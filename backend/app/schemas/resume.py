@@ -33,6 +33,11 @@ class ResumeResponse(ResumeBase):
 class ResumeUploadResponse(ResumeResponse):
     extracted_skills: List[ResumeSkillInfo] = []
     detected_sections: Dict[str, Any] = {}
+    generated_profile: Dict[str, Any] = {}
+    is_exact_profile_match: bool = False
+    existing_resume_id: Optional[str] = None
+    existing_profile_title: Optional[str] = None
+    profile_match_message: Optional[str] = None
 
 class RepoAnalysisRequest(BaseModel):
     repo_url: str

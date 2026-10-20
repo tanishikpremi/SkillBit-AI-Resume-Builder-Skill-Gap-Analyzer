@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { 
   User, 
@@ -14,16 +15,32 @@ import {
   Sparkles,
   RefreshCw,
   ExternalLink,
-  Code2
+  Code2,
+  Upload,
+  FileText,
+  UserCheck,
+  UserPlus,
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
+  const [savedResumes, setSavedResumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState('');
   const [canonicalSkills, setCanonicalSkills] = useState([]);
+
+  // Resume Upload -> Auto-Extract Profile State
+  const [resumeFile, setResumeFile] = useState(null);
+  const [extractingResume, setExtractingResume] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadResult, setUploadResult] = useState(null);
+  const [newProfileTitle, setNewProfileTitle] = useState('');
+  const [savingExtractedProfile, setSavingExtractedProfile] = useState(false);
 
   // Form states for basic info
   const [headline, setHeadline] = useState('');
@@ -51,6 +68,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchProfileData();
+    fetchSavedResumes();
     fetchCanonicalSkills();
   }, []);
 
@@ -71,6 +89,15 @@ export default function Profile() {
     }
   };
 
+  const fetchSavedResumes = async () => {
+    try {
+      const res = await api.get('/resume');
+      setSavedResumes(res.data || []);
+    } catch (err) {
+      console.error("Failed to load saved profiles/resumes:", err);
+    }
+  };
+
   const fetchCanonicalSkills = async () => {
     try {
       const res = await api.get('/skills?limit=150');
@@ -80,16 +107,105 @@ export default function Profile() {
     }
   };
 
-  const handleSyncFromResume = async () => {
+  const handleExtractFromResumeUpload = async (e) => {
+    e.preventDefault();
+    if (!resumeFile) {
+      setUploadError('Please select a PDF, DOCX, or TXT resume file first.');
+      return;
+    }
+
+    setExtractingResume(true);
+    setUploadError('');
+    setUploadResult(null);
+    setMsg('');
+
+    const formData = new FormData();
+    formData.append('file', resumeFile);
+
+    try {
+      const res = await api.post('/resume/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const data = res.data;
+      setUploadResult(data);
+      const gen = data.generated_profile || {};
+      const defaultTitle = gen.full_name && gen.headline
+        ? `${gen.full_name} — ${gen.headline}`
+        : (data.title || 'Extracted Candidate Profile');
+      setNewProfileTitle(defaultTitle);
+      await fetchSavedResumes();
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || 'Failed to extract profile from resume.');
+    } finally {
+      setExtractingResume(false);
+    }
+  };
+
+  const handleConfirmSaveNewProfile = async (goToJobMatch = false) => {
+    if (!uploadResult) return;
+    setSavingExtractedProfile(true);
+    setUploadError('');
+    try {
+      const chosenTitle = newProfileTitle.trim() || uploadResult.title || 'Candidate Profile';
+      await api.post('/profile/sync-from-resume', null, {
+        params: {
+          resume_id: uploadResult.id,
+          replace: true,
+          profile_title: chosenTitle
+        }
+      });
+      await fetchProfileData();
+      await fetchSavedResumes();
+      const targetResumeId = uploadResult.id;
+      setUploadResult(null);
+      setResumeFile(null);
+      setMsg(`Profile "${chosenTitle}" automatically generated and saved!`);
+      setTimeout(() => setMsg(''), 4500);
+      if (goToJobMatch) {
+        navigate(`/match?resumeId=${targetResumeId}`);
+      }
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || 'Failed to save generated profile.');
+    } finally {
+      setSavingExtractedProfile(false);
+    }
+  };
+
+  const handleUseExistingProfileForJobMatch = async () => {
+    if (!uploadResult) return;
+    const targetId = uploadResult.existing_resume_id || uploadResult.id;
+    if (uploadResult.is_exact_profile_match && uploadResult.existing_resume_id && uploadResult.existing_resume_id !== uploadResult.id) {
+      try {
+        await api.delete(`/resume/${uploadResult.id}`);
+      } catch {
+        // Ignore cleanup error
+      }
+    }
+    navigate(`/match?resumeId=${targetId}`);
+  };
+
+  const handleDiscardExtractedPrompt = async () => {
+    setUploadResult(null);
+    setResumeFile(null);
+    setMsg('Kept your existing profile without overwriting.');
+    setTimeout(() => setMsg(''), 3500);
+  };
+
+  const handleActivateSavedProfile = async (resObj) => {
     setSyncing(true);
     setMsg('');
     try {
-      await api.post('/profile/sync-from-resume');
-      setMsg('Master Profile successfully populated from latest resume!');
+      await api.post('/profile/sync-from-resume', null, {
+        params: {
+          resume_id: resObj.id,
+          replace: true
+        }
+      });
       await fetchProfileData();
+      setMsg(`Switched active profile to "${resObj.title}"!`);
       setTimeout(() => setMsg(''), 3500);
     } catch (err) {
-      alert(err.response?.data?.detail || "Could not sync. Ensure you have uploaded a resume first.");
+      alert(err.response?.data?.detail || "Could not load selected profile.");
     } finally {
       setSyncing(false);
     }
@@ -219,39 +335,316 @@ export default function Profile() {
     );
   }
 
+  const genProfile = uploadResult?.generated_profile || {};
+
   return (
     <div className="max-w-5xl mx-auto space-y-7 animate-fadeIn pb-16">
-      {/* Title & Sync CTA */}
+      {/* Page Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            Candidate Master Record
+            AI Profile Extractor & Career Record
           </div>
           <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#1E1B2E]">
-            Master Career Profile
+            Extract & Manage Candidate Profile
           </h1>
           <p className="text-xs text-[#706886] mt-0.5">
-            Maintain your master career record. Automatically powers resumes, gap evaluations, and ATS formatting.
+            Upload a resume to automatically generate your profile, detect existing matches, or customize your career record for Job Match.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        {savedResumes.length > 0 && (
           <button
-            onClick={handleSyncFromResume}
-            disabled={syncing}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 text-xs font-semibold transition-colors shadow-sm disabled:opacity-50"
+            onClick={() => navigate(`/match?resumeId=${savedResumes[0].id}`)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition-all"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-purple-600 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync from Uploaded Resume'}
+            <Briefcase className="w-4 h-4" />
+            <span>Use Current Profile for Job Match</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
-        </div>
+        )}
       </div>
 
       {msg && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-lime-50 border border-lime-200 text-lime-800 text-xs font-semibold shadow-sm animate-pulse">
-          <Check className="w-4 h-4 shrink-0 text-lime-600" />
+        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-lime-50 border border-lime-200 text-lime-800 text-xs font-semibold shadow-sm animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-lime-600" />
           <span>{msg}</span>
+        </div>
+      )}
+
+      {/* 1. Extract Profile from Resume Card */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#1E1B2E] flex items-center gap-2">
+              <Upload className="w-5 h-5 text-purple-600" />
+              Extract Profile from Resume
+            </h2>
+            <p className="text-xs text-[#706886] mt-0.5">
+              Upload your PDF, DOCX, or TXT resume. Your profile will be automatically generated, and we will check if an identical profile already exists.
+            </p>
+          </div>
+        </div>
+
+        {!uploadResult ? (
+          <form onSubmit={handleExtractFromResumeUpload} className="space-y-4">
+            <div className="border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/20 hover:bg-purple-50/40 rounded-2xl p-6 text-center transition-all flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 text-left">
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center border border-purple-200 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <label className="cursor-pointer">
+                    <span className="font-bold text-xs sm:text-sm text-purple-700 hover:underline">
+                      Choose a Resume File (.PDF, .DOCX, .TXT)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          setResumeFile(e.target.files[0]);
+                          setUploadError('');
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-[11px] text-[#706886] mt-0.5">
+                    {resumeFile
+                      ? `Selected: ${resumeFile.name} (${(resumeFile.size / 1024).toFixed(1)} KB)`
+                      : 'Automatically extracts contact info, summary, experience, projects, education, and skills.'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!resumeFile || extractingResume}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition-all disabled:opacity-50 shrink-0"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{extractingResume ? 'Extracting Profile...' : 'Extract Profile from Resume'}</span>
+              </button>
+            </div>
+
+            {uploadError && (
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+          </form>
+        ) : (
+          /* Decision Prompt After Automatic Profile Generation */
+          <div className="space-y-4 animate-fadeIn">
+            {uploadResult.is_exact_profile_match ? (
+              /* Exact Existing Profile Found — Ask Whether to Make a New Profile or Use Existing for Job Match */
+              <div className="bg-amber-50/90 p-5 sm:p-6 rounded-2xl border-2 border-amber-300 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-900 mb-1">
+                      Exact Existing Profile Match (No Changes Found)
+                    </span>
+                    <h3 className="font-heading font-extrabold text-base text-[#1E1B2E]">
+                      This Resume Matches Your Existing Profile ("{uploadResult.existing_profile_title}")
+                    </h3>
+                    <p className="text-xs text-[#4B4462] mt-1 leading-relaxed">
+                      We found no changes in your contact details, summary, work experience, education, projects, or extracted skills compared to your existing profile.
+                      Would you like to <span className="font-bold">use your existing profile for Job Match</span> or <span className="font-bold">make a new profile</span>?
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-amber-200 space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#524B68] uppercase tracking-wider mb-1">
+                      Profile Title (If making a new profile)
+                    </label>
+                    <input
+                      type="text"
+                      value={newProfileTitle}
+                      onChange={(e) => setNewProfileTitle(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E]"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleUseExistingProfileForJobMatch}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition-all"
+                    >
+                      <Briefcase className="w-4 h-4" />
+                      <span>Use Existing Profile for Job Match</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={savingExtractedProfile}
+                      onClick={() => handleConfirmSaveNewProfile(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white hover:bg-purple-50 text-purple-800 border border-purple-300 text-xs font-bold transition-all disabled:opacity-50"
+                    >
+                      <UserPlus className="w-4 h-4 text-purple-600" />
+                      <span>{savingExtractedProfile ? 'Saving...' : 'Make a New Profile'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDiscardExtractedPrompt}
+                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-[#706886] hover:text-[#1E1B2E]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* New or Updated Profile Information — Ask Whether to Save as New Profile */
+              <div className="bg-purple-50/70 p-5 sm:p-6 rounded-2xl border-2 border-purple-300 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-200/80 text-purple-900 mb-1">
+                      Profile Automatically Generated from Resume
+                    </span>
+                    <h3 className="font-heading font-extrabold text-base text-[#1E1B2E]">
+                      Save This Extracted Profile as a New Profile?
+                    </h3>
+                    <p className="text-xs text-[#4B4462] mt-0.5 leading-relaxed">
+                      We extracted <span className="font-bold">{genProfile.experiences?.length || 0} work experience(s)</span>,{' '}
+                      <span className="font-bold">{genProfile.educations?.length || 0} education entry(s)</span>,{' '}
+                      <span className="font-bold">{genProfile.projects?.length || 0} project(s)</span>, and{' '}
+                      <span className="font-bold">{uploadResult.extracted_skills?.length || 0} canonical skills</span>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-[#ECE5F6] space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-[#9D93B4] block">Extracted Name & Headline</span>
+                      <span className="font-bold text-[#1E1B2E]">
+                        {genProfile.full_name || 'Candidate'} — <span className="text-purple-700">{genProfile.headline || 'Professional'}</span>
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-[#9D93B4] block">Extracted Contact</span>
+                      <span className="text-[#4B4462]">
+                        {[genProfile.email, genProfile.phone, genProfile.location].filter(Boolean).join(' • ') || 'Detected from header'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#524B68] uppercase tracking-wider mb-1">
+                      Save Profile As
+                    </label>
+                    <input
+                      type="text"
+                      value={newProfileTitle}
+                      onChange={(e) => setNewProfileTitle(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E]"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      disabled={savingExtractedProfile}
+                      onClick={() => handleConfirmSaveNewProfile(false)}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition-all disabled:opacity-50"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{savingExtractedProfile ? 'Saving...' : 'Yes, Save as New Profile'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={savingExtractedProfile}
+                      onClick={() => handleConfirmSaveNewProfile(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white hover:bg-purple-50 text-purple-800 border border-purple-300 text-xs font-bold transition-all disabled:opacity-50"
+                    >
+                      <Briefcase className="w-4 h-4 text-purple-600" />
+                      <span>Save as New Profile & Go to Job Match</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDiscardExtractedPrompt}
+                      className="px-4 py-2.5 rounded-2xl bg-[#FAF8FD] hover:bg-slate-100 text-[#524B68] border border-[#ECE5F6] text-xs font-semibold transition-all"
+                    >
+                      No, Keep Current Profile
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 2. Saved Profiles Library (Quick Switcher & Job Match Launcher) */}
+      {savedResumes.length > 0 && (
+        <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-purple-600" />
+                Saved Candidate Profiles ({savedResumes.length})
+              </h3>
+              <p className="text-xs text-[#706886]">
+                Select any saved profile to load its details below or use it directly for Job Match.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {savedResumes.map((r) => (
+              <div
+                key={r.id}
+                className="p-4 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] hover:border-purple-300 transition-all flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs sm:text-sm text-[#1E1B2E] truncate">{r.title}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold">
+                      ATS {r.ats_score || 85}%
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#706886] truncate mt-0.5">
+                    {r.structured_json?.headline || r.structured_json?.summary || 'Structured Candidate Profile'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    disabled={syncing}
+                    onClick={() => handleActivateSavedProfile(r)}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-800 border border-purple-200 text-[11px] font-bold transition-colors"
+                  >
+                    Load
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/match?resumeId=${r.id}`)}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold transition-colors flex items-center gap-1"
+                  >
+                    <span>Job Match</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -259,7 +652,7 @@ export default function Profile() {
       <form onSubmit={handleSaveBasicInfo} className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-4">
         <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2 mb-2">
           <User className="w-4 h-4 text-purple-600" />
-          Primary Career Information
+          Active Profile — Primary Career Information
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -359,7 +752,7 @@ export default function Profile() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-purple-600" />
-            Work Experience
+            Work Experience ({profile?.experiences?.length || 0})
           </h3>
           <button
             onClick={() => setShowExpModal(true)}
@@ -371,7 +764,7 @@ export default function Profile() {
         </div>
 
         {profile?.experiences?.length === 0 ? (
-          <p className="text-xs text-[#706886] italic py-2">No work experience entries recorded yet.</p>
+          <p className="text-xs text-[#706886] italic py-2">No work experience entries recorded yet. Upload a resume above to extract automatically.</p>
         ) : (
           <div className="space-y-3">
             {profile?.experiences?.map((exp) => (
@@ -400,12 +793,12 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Projects Section (NEW!) */}
+      {/* Projects Section */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2">
             <FolderGit2 className="w-4 h-4 text-purple-600" />
-            Projects & Portfolio Highlights
+            Projects & Portfolio Highlights ({profile?.projects?.length || 0})
           </h3>
           <button
             onClick={() => setShowProjModal(true)}
@@ -417,7 +810,7 @@ export default function Profile() {
         </div>
 
         {profile?.projects?.length === 0 ? (
-          <p className="text-xs text-[#706886] italic py-2">No projects recorded yet. Add your key technical demonstrations.</p>
+          <p className="text-xs text-[#706886] italic py-2">No projects recorded yet. Upload a resume above or add your key technical demonstrations.</p>
         ) : (
           <div className="space-y-3">
             {profile?.projects?.map((proj) => (
@@ -461,12 +854,12 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Education Section (NEW!) */}
+      {/* Education Section */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-purple-600" />
-            Education & Academic Qualifications
+            Education & Academic Qualifications ({profile?.educations?.length || 0})
           </h3>
           <button
             onClick={() => setShowEduModal(true)}
@@ -507,7 +900,7 @@ export default function Profile() {
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas">
         <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2 mb-4">
           <Wrench className="w-4 h-4 text-purple-600" />
-          Technical Skills & Proficiencies
+          Technical Skills & Proficiencies ({profile?.user_skills?.length || 0})
         </h3>
 
         <form onSubmit={handleAddSkill} className="flex flex-wrap items-center gap-3 mb-5 p-4 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6]">

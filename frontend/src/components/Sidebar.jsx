@@ -28,7 +28,7 @@ export default function Sidebar() {
     { label: 'Job Match', path: '/match', icon: Briefcase },
     { label: 'Skill Roadmaps', path: '/recommendations', icon: BookOpen },
     { label: 'Resume Builder', path: '/builder', icon: FileText },
-    { label: 'Master Profile', path: '/profile', icon: UserIcon },
+    { label: 'Extract / Make Profile', path: '/profile', icon: UserIcon },
   ];
 
   if (user?.role === 'admin') {

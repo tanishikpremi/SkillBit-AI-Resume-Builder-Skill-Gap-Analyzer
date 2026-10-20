@@ -82,10 +82,14 @@ def update_user_profile(
 @router.post("/sync-from-resume", response_model=ProfileResponse)
 def sync_profile_from_resume(
     resume_id: str = None,
+    replace: bool = False,
+    profile_title: str = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Auto-populates Master Profile from the user's latest parsed resume."""
+    """Auto-populates Master Profile from the user's parsed resume (or saves as a new profile)."""
+    from app.ai.section_classifier import classify_resume_sections, extract_structured_profile_from_sections
+
     query = db.query(Resume).filter(Resume.user_id == current_user.id)
     if resume_id:
         resume = query.filter(Resume.id == resume_id).first()
@@ -98,6 +102,10 @@ def sync_profile_from_resume(
             detail="No resume found to sync from. Please upload a resume first."
         )
 
+    if profile_title and profile_title.strip():
+        resume.title = profile_title.strip()
+        db.commit()
+
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:
         profile = Profile(user_id=current_user.id)
@@ -105,8 +113,34 @@ def sync_profile_from_resume(
         db.commit()
         db.refresh(profile)
 
-    structured = resume.structured_json or {}
-    contact = structured.get("contact_info", {})
+    structured = dict(resume.structured_json or {})
+    extracted_skills = structured.get("extracted_skills", [])
+
+    # If structured lists were not populated yet on an older uploaded resume, parse them from raw_text
+    if resume.raw_text and not structured.get("experiences") and not structured.get("educations"):
+        sections = classify_resume_sections(resume.raw_text)
+        gen = extract_structured_profile_from_sections(sections, extracted_skills, fallback_title=resume.title)
+        structured["headline"] = structured.get("headline") or gen.get("headline")
+        structured["summary"] = structured.get("summary") or gen.get("summary")
+        structured["experiences"] = gen.get("experiences", [])
+        structured["educations"] = gen.get("educations", [])
+        structured["projects"] = gen.get("projects", [])
+        contact_info = dict(structured.get("contact_info") or {})
+        if gen.get("location") and not contact_info.get("location"):
+            contact_info["location"] = gen["location"]
+        structured["contact_info"] = contact_info
+        resume.structured_json = structured
+        db.commit()
+
+    contact = structured.get("contact_info", {}) or {}
+
+    if replace:
+        # Clear existing child records when saving as a clean new Master Profile
+        db.query(Experience).filter(Experience.profile_id == profile.id).delete()
+        db.query(Education).filter(Education.profile_id == profile.id).delete()
+        db.query(Project).filter(Project.profile_id == profile.id).delete()
+        db.query(UserSkill).filter(UserSkill.profile_id == profile.id).delete()
+        db.flush()
 
     # Sync basic contact info if present
     if contact.get("phone"): profile.phone = contact["phone"]
@@ -114,7 +148,10 @@ def sync_profile_from_resume(
     if contact.get("linkedin"): profile.linkedin_url = contact["linkedin"]
     if contact.get("github"): profile.github_url = contact["github"]
     if structured.get("summary"): profile.summary = structured["summary"]
-    if structured.get("headline"): profile.headline = structured["headline"]
+    if structured.get("headline"):
+        profile.headline = structured["headline"]
+    elif not profile.headline and resume.title:
+        profile.headline = resume.title
 
     # Sync work experiences
     if structured.get("experiences") and isinstance(structured["experiences"], list):
@@ -184,7 +221,6 @@ def sync_profile_from_resume(
                     db.add(proj)
 
     # Sync extracted skills
-    extracted_skills = structured.get("extracted_skills", [])
     for es in extracted_skills:
         skill_id = es.get("skill_id")
         if skill_id:
@@ -193,10 +229,12 @@ def sync_profile_from_resume(
                 UserSkill.skill_id == skill_id
             ).first()
             if not existing_us:
+                ev = es.get("evidence_level", "LISTED")
+                prof = "Advanced" if ev == "STRONG" else ("Intermediate" if ev == "MODERATE" else "Beginner")
                 us = UserSkill(
                     profile_id=profile.id,
                     skill_id=skill_id,
-                    proficiency="Intermediate",
+                    proficiency=prof,
                     verified_by_resume=True
                 )
                 db.add(us)
