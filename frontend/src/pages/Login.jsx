@@ -14,6 +14,18 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const formatAuthError = (err, fallback) => {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail.map((d) => d.msg || 'Invalid input').join(', ');
+    }
+    if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+      return 'Cannot reach backend server on http://localhost:8000. Please ensure the backend is running.';
+    }
+    return err.message || fallback;
+  };
+
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -22,7 +34,7 @@ export default function Login() {
       await login(email, password);
       navigate('/upload');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password. Please try again.');
+      setError(formatAuthError(err, 'Invalid email or password. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -35,7 +47,7 @@ export default function Login() {
       await login(demoEmail, demoPass);
       navigate('/upload');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Demo login failed');
+      setError(formatAuthError(err, 'Demo login failed'));
     } finally {
       setLoading(false);
     }

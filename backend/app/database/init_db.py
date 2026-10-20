@@ -1,7 +1,7 @@
 import logging
 from sqlalchemy.orm import Session
 from app.database.session import Base, engine, SessionLocal
-from app.models import Skill, SkillAlias, User
+from app.models import Skill, SkillAlias, User, Profile, Resume
 from app.utils.taxonomy_data import CANONICAL_SKILLS
 import bcrypt
 
@@ -10,6 +10,121 @@ logger = logging.getLogger(__name__)
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+def seed_demo_candidate(db: Session, email: str = "sarah.connor@example.com", password: str = "Resistance2026!", full_name: str = "Sarah Connor") -> User:
+    """Provisions the default candidate demo user, profile, and starter ATS resume if not present."""
+    user = db.query(User).filter(User.email == email.lower()).first()
+    if not user:
+        user = User(
+            email=email.lower(),
+            hashed_password=hash_password(password),
+            full_name=full_name,
+            role="user",
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        print(f"[SUCCESS] Seeded default candidate demo user: {email}")
+
+    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+    if not profile:
+        profile = Profile(
+            user_id=user.id,
+            headline="Full-Stack Cloud & AI Software Engineer",
+            summary="Results-driven Software Engineer with 4+ years of experience architecting FastAPI microservices, modern React interfaces, and containerized cloud deployments.",
+            phone="(555) 234-5678",
+            location="San Francisco, CA",
+            linkedin_url="https://linkedin.com/in/sarahconnor",
+            github_url="https://github.com/sarahconnor"
+        )
+        db.add(profile)
+        db.commit()
+
+    existing_resume = db.query(Resume).filter(Resume.user_id == user.id).first()
+    if not existing_resume:
+        demo_skill_names = ["Python", "FastAPI", "React", "TypeScript", "PostgreSQL", "Docker", "Git"]
+        extracted_skills = []
+        for s_name in demo_skill_names:
+            skill_obj = db.query(Skill).filter(Skill.canonical_name == s_name).first()
+            if skill_obj:
+                extracted_skills.append({
+                    "skill_id": skill_obj.id,
+                    "canonical_name": skill_obj.canonical_name,
+                    "category": skill_obj.category,
+                    "section": "experience",
+                    "evidence_level": "STRONG" if s_name in ("Python", "FastAPI", "React", "PostgreSQL", "Docker") else "LISTED",
+                    "evidence_snippets": [
+                        f"Architected and deployed production services utilizing {skill_obj.canonical_name}, improving throughput by 35%."
+                    ],
+                    "mention_count": 2,
+                    "sections_found": ["experience", "skills"]
+                })
+
+        structured_json = {
+            "full_name": full_name,
+            "contact_info": {
+                "full_name": full_name,
+                "email": email.lower(),
+                "phone": "(555) 234-5678",
+                "location": "San Francisco, CA",
+                "linkedin": "https://linkedin.com/in/sarahconnor",
+                "github": "https://github.com/sarahconnor"
+            },
+            "summary": "Results-driven Software Engineer with 4+ years of experience architecting FastAPI microservices, modern React interfaces, and containerized cloud deployments.",
+            "skills": demo_skill_names,
+            "extracted_skills": extracted_skills,
+            "experiences": [
+                {
+                    "company": "CloudScale AI",
+                    "role_title": "Senior Software Engineer",
+                    "location": "San Francisco, CA",
+                    "start_date": "2022",
+                    "end_date": "Present",
+                    "is_current": True,
+                    "bullets": [
+                        "Architected and deployed asynchronous microservices using Python, FastAPI, and Docker, handling 40k req/min with 99.9% uptime.",
+                        "Optimized PostgreSQL query execution plans, reducing average endpoint latency by 35%."
+                    ]
+                }
+            ],
+            "educations": [
+                {
+                    "degree": "B.S. in Computer Science",
+                    "field_of_study": "Software Engineering",
+                    "institution": "University of California, Berkeley",
+                    "start_date": "2018",
+                    "end_date": "2022",
+                    "gpa": "3.85"
+                }
+            ],
+            "projects": [
+                {
+                    "title": "Real-Time Event Streaming Engine",
+                    "technologies": ["Python", "FastAPI", "React", "Docker"],
+                    "repo_url": "https://github.com/sarahconnor/stream-engine",
+                    "live_url": "",
+                    "bullets": [
+                        "Engineered distributed event streaming pipeline processing 50k events/sec with automatic backpressure.",
+                        "Built responsive React and TypeScript telemetry dashboard with live WebSocket health metrics."
+                    ]
+                }
+            ]
+        }
+
+        resume = Resume(
+            user_id=user.id,
+            title="Sarah Connor - Full-Stack Engineer Resume",
+            source_type="builder",
+            raw_text="Sarah Connor\nSenior Software Engineer\nArchitected and deployed asynchronous microservices using Python, FastAPI, React, TypeScript, PostgreSQL, and Docker.",
+            structured_json=structured_json,
+            ats_score=88.0,
+            is_active=True
+        )
+        db.add(resume)
+        db.commit()
+
+    return user
 
 from sqlalchemy import inspect, text
 
@@ -94,6 +209,10 @@ def init_db(db: Session = None) -> None:
                 db.add(admin_user)
                 db.commit()
                 print(f"[SUCCESS] Seeded default administrator user: {admin_email}")
+
+        # 4. Seed default demo candidate user on application startup
+        if close_db_later:
+            seed_demo_candidate(db)
 
     except Exception as e:
         db.rollback()

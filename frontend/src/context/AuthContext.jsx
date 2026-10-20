@@ -49,14 +49,25 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    const { access_token, user_id, full_name, role, picture } = res.data;
+    const res = await api.post('/auth/login', { email: email.trim(), password });
+    const { access_token, user_id, email: userEmail, full_name, role, picture } = res.data;
     localStorage.setItem('token', access_token);
-    const userData = { id: user_id, email, full_name, role, picture };
+    const userData = { id: user_id, email: userEmail || email.trim(), full_name, role, picture };
     localStorage.setItem('user', JSON.stringify(userData));
     setToken(access_token);
     setUser(userData);
     return res.data;
+  };
+
+  const register = async (email, password, full_name) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = full_name.trim();
+    await api.post('/auth/register', {
+      email: cleanEmail,
+      password,
+      full_name: cleanName,
+    });
+    return await login(cleanEmail, password);
   };
 
   const loginWithGoogle = async ({ credential, email, full_name, picture } = {}) => {
@@ -68,17 +79,6 @@ export const AuthProvider = ({ children }) => {
     setToken(access_token);
     setUser(userData);
     return res.data;
-  };
-
-  const register = async (email, password, fullName) => {
-    // 1. Create account on backend
-    await api.post('/auth/register', {
-      email,
-      password,
-      full_name: fullName,
-    });
-    // 2. Automatically log in to establish session & JWT token
-    return await login(email, password);
   };
 
   const logout = () => {

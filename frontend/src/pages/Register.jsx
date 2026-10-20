@@ -13,6 +13,18 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const formatAuthError = (err, fallback) => {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail.map((d) => d.msg || 'Invalid input').join(', ');
+    }
+    if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+      return 'Cannot reach backend server on http://localhost:8000. Please ensure the backend is running.';
+    }
+    return err.message || fallback;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -25,11 +37,7 @@ export default function Register() {
       await register(email, password, fullName);
       navigate('/upload');
     } catch (err) {
-      const message = err.response?.data?.detail 
-        || (err.code === 'ERR_NETWORK' || !err.response 
-            ? 'Cannot connect to backend server. Make sure the backend is running on http://localhost:8000 (or run start.bat).' 
-            : (err.message || 'Registration failed. Please check your details.'));
-      setError(message);
+      setError(formatAuthError(err, 'Registration failed. Please check your details.'));
     } finally {
       setLoading(false);
     }

@@ -184,7 +184,14 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == login_data.email.lower()).first()
+    email_clean = login_data.email.strip().lower()
+    user = db.query(User).filter(User.email == email_clean).first()
+
+    # Auto-provision default demo candidate account if not yet seeded in DB
+    if not user and email_clean == "sarah.connor@example.com" and login_data.password == "Resistance2026!":
+        from app.database.init_db import seed_demo_candidate
+        user = seed_demo_candidate(db, email=email_clean, password=login_data.password, full_name="Sarah Connor")
+
     if not user or not user.hashed_password or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
