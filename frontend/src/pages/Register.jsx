@@ -25,7 +25,11 @@ export default function Register() {
       await register(email, password, fullName);
       navigate('/upload');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please check your details.');
+      const message = err.response?.data?.detail 
+        || (err.code === 'ERR_NETWORK' || !err.response 
+            ? 'Cannot connect to backend server. Make sure the backend is running on http://localhost:8000 (or run start.bat).' 
+            : (err.message || 'Registration failed. Please check your details.'));
+      setError(message);
     } finally {
       setLoading(false);
     }

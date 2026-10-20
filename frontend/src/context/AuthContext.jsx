@@ -70,6 +70,17 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const register = async (email, password, fullName) => {
+    // 1. Create account on backend
+    await api.post('/auth/register', {
+      email,
+      password,
+      full_name: fullName,
+    });
+    // 2. Automatically log in to establish session & JWT token
+    return await login(email, password);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -78,7 +89,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, googleClientId, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, googleClientId, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
