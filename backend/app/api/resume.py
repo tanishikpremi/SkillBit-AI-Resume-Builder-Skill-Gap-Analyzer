@@ -13,7 +13,9 @@ from app.schemas.resume import (
     ResumeResponse, 
     ResumeUploadResponse,
     RepoAnalysisRequest,
-    RepoAnalysisResponse
+    RepoAnalysisResponse,
+    ResumeAutoFormatRequest,
+    ResumeAutoFormatResponse
 )
 from app.api.deps import get_current_active_user
 from app.utils.file_storage import validate_and_save_upload, remove_file_safely
@@ -416,5 +418,26 @@ def analyze_github_repository(
         stars=stars,
         language=primary_lang
     )
+
+
+@router.post("/auto-format", response_model=ResumeAutoFormatResponse)
+def auto_format_resume_with_llm(
+    payload: ResumeAutoFormatRequest,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    LLM-powered Resume Formatting & Messy Layout Fixer:
+    Cleans inconsistent casing, normalizes dates/links, categorizes skills,
+    splits/polishes STAR bullets with bolded metrics, and tunes ATS typography settings.
+    """
+    from app.ai.llm_service import llm_service
+
+    result = llm_service.auto_fix_resume_formatting(
+        structured_json=payload.structured_json or {},
+        raw_messy_text=payload.raw_messy_text,
+        target_role=payload.target_role
+    )
+    return ResumeAutoFormatResponse(**result)
+
 
 

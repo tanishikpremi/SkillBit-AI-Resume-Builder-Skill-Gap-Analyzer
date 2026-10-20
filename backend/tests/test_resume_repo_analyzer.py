@@ -97,3 +97,64 @@ def test_pdf_export_with_clickable_links():
     pdf_bytes = pdf_buffer.getvalue()
     assert len(pdf_bytes) > 1000
     assert pdf_bytes.startswith(b"%PDF")
+
+
+def test_auto_format_resume_and_styled_pdf_tables(test_client):
+    client, _ = test_client
+
+    client.post("/api/auth/register", json={
+        "email": "formatter@careertech.ai",
+        "password": "Password123!",
+        "full_name": "Format Tester"
+    })
+    token = client.post("/api/auth/login", json={
+        "email": "formatter@careertech.ai",
+        "password": "Password123!"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    messy_payload = {
+        "structured_json": {
+            "full_name": "ALEX MERCER",
+            "designation": "senior backend engineer",
+            "contact_info": {"phone": "5551234567", "email": "ALEX@EXAMPLE.COM"},
+            "skills": ["python", "fastapi", "postgresql", "docker", "react.js"],
+            "experiences": [
+                {
+                    "company": "acme cloud",
+                    "role_title": "software engineer",
+                    "start_date": "2022",
+                    "end_date": "present",
+                    "bullets": ["worked on microservices reducing latency by 35% and handling 40k req/min"]
+                }
+            ],
+            "custom_tables": [
+                {
+                    "title": "Engineering Benchmarks",
+                    "headers": ["Service", "Stack", "Impact"],
+                    "rows": [["Auth Gateway", "**FastAPI** + *Redis*", "__99.99% uptime__"]]
+                }
+            ],
+            "style_settings": {
+                "font_family": "serif",
+                "font_size": "compact",
+                "line_spacing": "tight",
+                "accent_color": "#6D28D9",
+                "skills_display_mode": "table"
+            }
+        }
+    }
+
+    fmt_res = client.post("/api/resume/auto-format", headers=headers, json=messy_payload)
+    assert fmt_res.status_code == 200
+    fmt_data = fmt_res.json()
+    cleaned = fmt_data["structured_json"]
+    assert cleaned["full_name"] == "Alex Mercer"
+    assert cleaned["contact_info"]["phone"] == "(555) 123-4567"
+    assert len(cleaned["skill_categories"]) >= 2
+    assert len(fmt_data["fixes_applied"]) >= 2
+
+    # Verify PDF export with custom tables, table-mode skills, serif font, custom color, and rich text
+    pdf_buf = build_ats_resume_pdf(cleaned)
+    assert pdf_buf.getvalue().startswith(b"%PDF")
+

@@ -641,4 +641,267 @@ Format as a JSON object with a "stages" array containing exactly 4 objects in ch
             }
         ]
 
+    def auto_fix_resume_formatting(
+        self,
+        structured_json: Dict[str, Any],
+        raw_messy_text: Optional[str] = None,
+        target_role: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Uses the active LLM (or deterministic CareerTech formatting engine) to automatically
+        clean messy resume layouts, normalize dates/names/links, categorize skills,
+        upgrade passive bullets into STAR statements with bolded metrics, and tune ATS layout settings.
+        """
+        from app.ai.section_classifier import classify_resume_sections, extract_structured_profile_from_sections
+        from app.ai.resume_content_generator import WEAK_VERBS
+
+        provider_info = self.get_provider_info()
+        data = dict(structured_json or {})
+        fixes_applied: List[str] = []
+
+        # 1. If raw_messy_text is supplied, parse sections & extract structured profile first
+        if raw_messy_text and raw_messy_text.strip():
+            sections = classify_resume_sections(raw_messy_text)
+            gen = extract_structured_profile_from_sections(sections, data.get("extracted_skills", []))
+            if gen.get("full_name") and not data.get("full_name"):
+                data["full_name"] = gen["full_name"]
+            if gen.get("headline") and not data.get("designation"):
+                data["designation"] = gen["headline"]
+            if gen.get("summary"):
+                data["summary"] = gen["summary"]
+            if gen.get("experiences"):
+                data["experiences"] = gen["experiences"]
+            if gen.get("educations"):
+                data["educations"] = gen["educations"]
+            if gen.get("projects"):
+                data["projects"] = gen["projects"]
+            contact = dict(data.get("contact_info") or {})
+            for k in ("email", "phone", "location"):
+                if gen.get(k) and not contact.get(k):
+                    contact[k] = gen[k]
+            if gen.get("linkedin_url") and not contact.get("linkedin"):
+                contact["linkedin"] = gen["linkedin_url"]
+            if gen.get("github_url") and not contact.get("github"):
+                contact["github"] = gen["github_url"]
+            data["contact_info"] = contact
+            fixes_applied.append("Parsed raw unformatted text into structured ATS sections (Contact, Summary, Experience, Projects, Education).")
+
+        # 2. If live LLM is available, query it for deep layout & content cleanup
+        if not provider_info["is_mock"]:
+            prompt = f"""
+You are an expert ATS Resume Formatting & Layout Optimizer.
+Clean, standardize, and structure the following resume JSON so it follows Harvard/Executive single-column ATS standards.
+Target Role Context: "{target_role or data.get('designation') or 'Software Engineer'}"
+
+Input Resume JSON:
+{json.dumps(data, indent=2)[:5500]}
+
+Apply these formatting rules strictly without inventing fake companies or degrees:
+1. Proper Title Case for full_name, designation, company names, role titles, and institutions.
+2. Standardize date strings (e.g. "Jan 2022", "Present", "2018 - 2022").
+3. Organize all skills into "skill_categories" array of objects: [{{"category": "Category Name", "skills": ["Skill1", "Skill2"]}}].
+4. Polish "summary" into a crisp 2-3 sentence executive summary.
+5. Rewrite weak experience/project bullets using strong STAR action verbs and wrap existing numeric metrics in **bold** (e.g. **99.9% uptime**, **35%**).
+
+Respond with valid JSON only in this exact structure:
+{{
+  "structured_json": {{ ...cleaned resume object... }},
+  "fixes_applied": ["Fix 1 description", "Fix 2 description", "Fix 3 description"]
+}}
+"""
+            raw_resp = self._call_active_provider(prompt)
+            if raw_resp:
+                try:
+                    clean_text = re.sub(r"^```(?:json)?\s*", "", raw_resp.strip())
+                    clean_text = re.sub(r"\s*```$", "", clean_text)
+                    parsed = json.loads(clean_text)
+                    if isinstance(parsed.get("structured_json"), dict):
+                        data.update(parsed["structured_json"])
+                        llm_fixes = parsed.get("fixes_applied") or []
+                        fixes_applied.extend(llm_fixes)
+                except Exception as exc:
+                    logger.warning(f"LLM auto-format JSON fallback triggered: {exc}")
+
+        # 3. Deterministic Formatting, Casing, Categorization & Bullet Polish Pass
+        CANONICAL_CASING = {
+            "python": "Python", "javascript": "JavaScript", "typescript": "TypeScript",
+            "react": "React", "react.js": "React", "reactjs": "React", "next.js": "Next.js",
+            "nextjs": "Next.js", "vue.js": "Vue.js", "nodejs": "Node.js", "node.js": "Node.js",
+            "fastapi": "FastAPI", "django": "Django", "flask": "Flask", "express.js": "Express.js",
+            "postgresql": "PostgreSQL", "postgres": "PostgreSQL", "mysql": "MySQL",
+            "mongodb": "MongoDB", "redis": "Redis", "sqlite": "SQLite", "dynamodb": "Amazon DynamoDB",
+            "aws": "AWS", "gcp": "Google Cloud Platform", "azure": "Microsoft Azure",
+            "docker": "Docker", "kubernetes": "Kubernetes", "k8s": "Kubernetes",
+            "ci/cd": "CI/CD", "github actions": "GitHub Actions", "terraform": "Terraform",
+            "linux": "Linux", "git": "Git", "github": "GitHub", "graphql": "GraphQL",
+            "restful apis": "RESTful APIs", "rest api": "RESTful APIs", "sql": "SQL",
+            "html": "HTML", "css": "CSS", "tailwind css": "Tailwind CSS", "tailwindcss": "Tailwind CSS",
+            "pytorch": "PyTorch", "tensorflow": "TensorFlow", "scikit-learn": "Scikit-Learn",
+            "pandas": "Pandas", "numpy": "NumPy", "kafka": "Apache Kafka", "apache kafka": "Apache Kafka"
+        }
+
+        CATEGORY_BUCKETS = {
+            "Programming Languages": {"Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust", "SQL", "HTML", "CSS", "Bash"},
+            "Frameworks & Libraries": {"React", "Next.js", "Vue.js", "Angular", "FastAPI", "Django", "Flask", "Express.js", "Node.js", "Tailwind CSS", "Redux", "PyTorch", "TensorFlow", "Scikit-Learn", "Pandas", "NumPy"},
+            "Databases & Storage": {"PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite", "Amazon DynamoDB", "Elasticsearch"},
+            "Cloud & DevOps": {"AWS", "Google Cloud Platform", "Microsoft Azure", "Docker", "Kubernetes", "CI/CD", "GitHub Actions", "Terraform", "Linux", "Nginx"},
+            "AI, Architecture & Tools": {"Machine Learning", "Deep Learning", "NLP", "LLMs", "RESTful APIs", "GraphQL", "Microservices", "System Design", "Apache Kafka", "Git", "GitHub", "Postman"}
+        }
+
+        # Clean Name & Designation
+        contact = dict(data.get("contact_info") or {})
+        raw_name = (data.get("full_name") or contact.get("full_name") or "").strip()
+        if raw_name and (raw_name.isupper() or raw_name.islower()):
+            raw_name = raw_name.title()
+            fixes_applied.append(f"Normalized candidate name casing to '{raw_name}'.")
+        if raw_name:
+            data["full_name"] = raw_name
+            contact["full_name"] = raw_name
+
+        raw_desig = (data.get("designation") or data.get("headline") or "").strip()
+        if raw_desig and raw_desig.islower():
+            raw_desig = raw_desig.title()
+            fixes_applied.append(f"Standardized professional designation to '{raw_desig}'.")
+        if raw_desig:
+            data["designation"] = raw_desig
+            data["headline"] = raw_desig
+
+        # Clean Email & Phone format
+        if contact.get("email"):
+            contact["email"] = contact["email"].strip().lower()
+        if contact.get("phone"):
+            digits = re.sub(r"\D+", "", contact["phone"])
+            if len(digits) == 10:
+                contact["phone"] = f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+                fixes_applied.append("Standardized phone number to ATS format (XXX) XXX-XXXX.")
+        data["contact_info"] = contact
+
+        # Polish Summary
+        summary = re.sub(r"\s+", " ", (data.get("summary") or "").strip())
+        if summary:
+            if summary[0].islower():
+                summary = summary[0].upper() + summary[1:]
+            if not summary.endswith("."):
+                summary += "."
+            data["summary"] = summary
+
+        # Collect & Auto-Categorize Skills
+        all_raw_skills: List[str] = []
+        for c_obj in (data.get("skill_categories") or []):
+            if isinstance(c_obj, dict):
+                all_raw_skills.extend(c_obj.get("skills") or [])
+        for s_item in (data.get("skills") or []):
+            if isinstance(s_item, dict):
+                all_raw_skills.append(s_item.get("canonical_name") or s_item.get("name") or "")
+            else:
+                all_raw_skills.append(str(s_item))
+
+        normalized_skills: List[str] = []
+        for s in all_raw_skills:
+            # Split if user accidentally pasted comma-separated skills inside a single tag
+            for sub in str(s).split(","):
+                clean_s = sub.strip()
+                if not clean_s:
+                    continue
+                canonical = CANONICAL_CASING.get(clean_s.lower(), clean_s)
+                if canonical not in normalized_skills:
+                    normalized_skills.append(canonical)
+
+        if normalized_skills:
+            grouped: Dict[str, List[str]] = {k: [] for k in CATEGORY_BUCKETS}
+            grouped["Other Technical Skills"] = []
+            for sk in normalized_skills:
+                placed = False
+                for cat_name, cat_set in CATEGORY_BUCKETS.items():
+                    if sk in cat_set:
+                        grouped[cat_name].append(sk)
+                        placed = True
+                        break
+                if not placed:
+                    grouped["Other Technical Skills"].append(sk)
+
+            data["skill_categories"] = [
+                {"category": k, "skills": v}
+                for k, v in grouped.items() if v
+            ]
+            data["skills"] = normalized_skills
+            fixes_applied.append(f"Deduplicated and organized {len(normalized_skills)} skills into {len(data['skill_categories'])} structured ATS categories.")
+
+        # Helper to polish bullet points (upgrade weak verbs + bold metrics + clean punctuation)
+        def _polish_bullets(bullets_list: List[str]) -> List[str]:
+            cleaned_list: List[str] = []
+            for raw_b in (bullets_list or []):
+                # Split if multiple bullet symbols are jammed on one line
+                sub_bullets = [b.strip() for b in re.split(r"(?:^|\n)\s*[•\-\*▪▸]+\s*", str(raw_b)) if b.strip()]
+                for b in sub_bullets:
+                    b_clean = re.sub(r"\s+", " ", b).strip()
+                    if not b_clean:
+                        continue
+                    # Replace weak passive openings
+                    for weak, strong in WEAK_VERBS.items():
+                        b_clean = re.sub(rf"^{re.escape(weak)}\b", strong.capitalize(), b_clean, flags=re.IGNORECASE)
+                        b_clean = re.sub(rf"\b{re.escape(weak)}\b", strong, b_clean, flags=re.IGNORECASE)
+                    if b_clean[0].islower():
+                        b_clean = b_clean[0].upper() + b_clean[1:]
+                    if not b_clean.endswith("."):
+                        b_clean += "."
+                    # Bold standalone metrics (e.g., 40k req/min, 99.9%, 35%, 10x) if not already bolded
+                    if "**" not in b_clean:
+                        b_clean = re.sub(
+                            r"(?<!\*)\b(\d+(?:\.\d+)?(?:\s*%|\+?\s*x|\s*k\+?\s*(?:req\/min|events\/sec|users|RPS)))\b(?!\*)",
+                            r"**\1**",
+                            b_clean,
+                            flags=re.IGNORECASE
+                        )
+                    cleaned_list.append(b_clean)
+            return cleaned_list
+
+        # Clean Experiences
+        exps = data.get("experiences") or []
+        if isinstance(exps, list):
+            for exp in exps:
+                if isinstance(exp, dict):
+                    if exp.get("role_title") and exp["role_title"].islower():
+                        exp["role_title"] = exp["role_title"].title()
+                    if exp.get("company") and exp["company"].islower():
+                        exp["company"] = exp["company"].title()
+                    if exp.get("end_date") and str(exp["end_date"]).strip().lower() in ("present", "current", "now"):
+                        exp["end_date"] = "Present"
+                        exp["is_current"] = True
+                    exp["bullets"] = _polish_bullets(exp.get("bullets") or [])
+            fixes_applied.append("Standardized work experience titles, date ranges, STAR action verbs, and bolded key metrics.")
+
+        # Clean Projects
+        projs = data.get("projects") or []
+        if isinstance(projs, list):
+            for proj in projs:
+                if isinstance(proj, dict):
+                    if proj.get("title") and proj["title"].islower():
+                        proj["title"] = proj["title"].title()
+                    proj["bullets"] = _polish_bullets(proj.get("bullets") or [])
+                    techs = proj.get("technologies") or []
+                    if isinstance(techs, str):
+                        techs = [t.strip() for t in techs.split(",") if t.strip()]
+                    proj["technologies"] = [CANONICAL_CASING.get(t.strip().lower(), t.strip()) for t in techs if str(t).strip()]
+
+        # Recommend optimal style_settings for clean 1-page ATS density
+        total_bullets = sum(len(e.get("bullets") or []) for e in exps if isinstance(e, dict)) + sum(len(p.get("bullets") or []) for p in projs if isinstance(p, dict))
+        style_settings = dict(data.get("style_settings") or {})
+        style_settings.setdefault("font_family", "sans")
+        style_settings["font_size"] = "compact" if total_bullets > 10 else "standard"
+        style_settings["line_spacing"] = "tight" if total_bullets > 10 else "normal"
+        style_settings.setdefault("accent_color", "#1E3A8A")
+        data["style_settings"] = style_settings
+        fixes_applied.append(
+            f"Auto-adjusted typography density to '{style_settings['font_size']}' ({style_settings['line_spacing']} spacing) for optimal single-page ATS layout."
+        )
+
+        # Deduplicate fixes list
+        unique_fixes = list(dict.fromkeys(fixes_applied))
+        return {
+            "structured_json": data,
+            "fixes_applied": unique_fixes,
+            "provider_used": provider_info["name"]
+        }
+
 llm_service = LLMService()

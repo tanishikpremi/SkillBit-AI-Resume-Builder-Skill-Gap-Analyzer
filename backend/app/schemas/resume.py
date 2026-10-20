@@ -52,3 +52,16 @@ class RepoAnalysisResponse(BaseModel):
     stars: Optional[int] = None
     language: Optional[str] = None
 
+
+class ResumeAutoFormatRequest(BaseModel):
+    structured_json: Dict[str, Any] = {}
+    raw_messy_text: Optional[str] = None
+    target_role: Optional[str] = None
+
+
+class ResumeAutoFormatResponse(BaseModel):
+    structured_json: Dict[str, Any]
+    fixes_applied: List[str] = []
+    provider_used: str = "SkillBit Formatting Engine"
+
+
