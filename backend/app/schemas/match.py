@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
@@ -36,6 +36,7 @@ class MatchAnalysisResponse(BaseModel):
     matched_count: int
     total_job_skills: int
     summary_notes: Optional[str] = None
+    ai_insights: Optional[Dict[str, Any]] = None
     disclaimer: str
     created_at: datetime
     gaps: List[SkillGapResponse] = []

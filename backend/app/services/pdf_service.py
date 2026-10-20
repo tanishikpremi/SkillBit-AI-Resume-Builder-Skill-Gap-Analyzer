@@ -101,12 +101,24 @@ def build_ats_resume_pdf(resume_data: Dict[str, Any]) -> io.BytesIO:
     story.append(Paragraph(name, name_style))
     story.append(Spacer(1, 3))
 
+    def sanitize_link(u: str) -> str:
+        u = (u or "").strip()
+        if not u:
+            return ""
+        if not u.startswith("http://") and not u.startswith("https://"):
+            return "https://" + u
+        return u
+
     contact_parts = []
     if contact.get("email"): contact_parts.append(contact["email"])
     if contact.get("phone"): contact_parts.append(contact["phone"])
     if contact.get("location"): contact_parts.append(contact["location"])
-    if contact.get("linkedin"): contact_parts.append(contact["linkedin"])
-    if contact.get("github"): contact_parts.append(contact["github"])
+    if contact.get("linkedin"):
+        link_url = sanitize_link(contact["linkedin"])
+        contact_parts.append(f'<a href="{link_url}" color="#2B6CB0"><u>LinkedIn</u></a>')
+    if contact.get("github"):
+        link_url = sanitize_link(contact["github"])
+        contact_parts.append(f'<a href="{link_url}" color="#2B6CB0"><u>GitHub</u></a>')
 
     if contact_parts:
         story.append(Paragraph(" • ".join(contact_parts), contact_style))
@@ -174,8 +186,21 @@ def build_ats_resume_pdf(resume_data: Dict[str, Any]) -> io.BytesIO:
             techs = ", ".join(proj.get("technologies", []))
             title_line = f"<b>{title}</b>"
             if techs: title_line += f" | <i>{techs}</i>"
+            if proj.get("repo_url"):
+                repo_link = sanitize_link(proj["repo_url"])
+                title_line += f' — <a href="{repo_link}" color="#2B6CB0"><u>GitHub</u></a>'
+            if proj.get("live_url"):
+                live_link = sanitize_link(proj["live_url"])
+                title_line += f' — <a href="{live_link}" color="#2B6CB0"><u>Live Demo</u></a>'
             story.append(Paragraph(title_line, item_title_style))
-            if proj.get("description"):
+            
+            # Project accomplishment bullets or description
+            bullets = proj.get("bullets", [])
+            if bullets and isinstance(bullets, list) and len(bullets) > 0:
+                for b in bullets:
+                    if b.strip():
+                        story.append(Paragraph(f"• {b}", bullet_style))
+            elif proj.get("description"):
                 story.append(Paragraph(proj["description"], body_style))
             story.append(Spacer(1, 4))
     elif resume_data.get("projects_raw"):

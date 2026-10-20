@@ -13,18 +13,18 @@ export default function ScoreGauge({
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   const getColor = (val) => {
-    if (val >= 75) return { stroke: '#10B981', text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' };
-    if (val >= 50) return { stroke: '#F59E0B', text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' };
-    return { stroke: '#EF4444', text: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' };
+    if (val >= 75) return { stroke: '#84CC16', text: 'text-lime-700', bg: 'bg-lime-50', border: 'border-lime-200' };
+    if (val >= 50) return { stroke: '#F59E0B', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' };
+    return { stroke: '#F43F5E', text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' };
   };
 
   const currentTheme = getColor(score);
 
   return (
-    <div className="glass-card p-6 rounded-2xl border border-gray-800 flex flex-col items-center text-center">
-      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
-        <ShieldCheck className="w-4 h-4 text-blue-400" />
-        Transparent Match Alignment Indicator
+    <div className="bg-white p-6 rounded-3xl border border-[#ECE5F6] shadow-saas flex flex-col items-center text-center">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200/80 text-[11px] font-semibold uppercase tracking-wider mb-5">
+        <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+        Transparent Match Alignment
       </div>
 
       {/* SVG Radial Gauge */}
@@ -34,8 +34,8 @@ export default function ScoreGauge({
             cx="80"
             cy="80"
             r={radius}
-            stroke="#1F2937"
-            strokeWidth="10"
+            stroke="#F0EBF9"
+            strokeWidth="11"
             fill="transparent"
           />
           <circle
@@ -43,7 +43,7 @@ export default function ScoreGauge({
             cy="80"
             r={radius}
             stroke={currentTheme.stroke}
-            strokeWidth="10"
+            strokeWidth="11"
             fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -55,33 +55,33 @@ export default function ScoreGauge({
           <span className={`text-4xl font-extrabold font-heading ${currentTheme.text}`}>
             {score}%
           </span>
-          <span className="text-[11px] text-gray-400 uppercase tracking-widest font-medium mt-0.5">
+          <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-0.5">
             Fit Index
           </span>
         </div>
       </div>
 
       {/* Sub-scores breakdown */}
-      <div className="grid grid-cols-3 gap-3 w-full mt-6 pt-5 border-t border-gray-800">
-        <div className="flex flex-col items-center p-2 rounded-xl bg-gray-900/60 border border-gray-800/80">
-          <span className="text-xs text-gray-400 font-medium">Exact Skills</span>
-          <span className="text-base font-bold text-gray-200 mt-0.5">{exactScore}%</span>
+      <div className="grid grid-cols-3 gap-2.5 w-full mt-6 pt-5 border-t border-[#ECE5F6]">
+        <div className="flex flex-col items-center p-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6]">
+          <span className="text-[11px] text-slate-500 font-medium">Exact Skills</span>
+          <span className="text-base font-extrabold text-[#1E1B2E] mt-0.5">{exactScore}%</span>
         </div>
-        <div className="flex flex-col items-center p-2 rounded-xl bg-gray-900/60 border border-gray-800/80">
-          <span className="text-xs text-gray-400 font-medium">Experience</span>
-          <span className="text-base font-bold text-gray-200 mt-0.5">{experienceScore}%</span>
+        <div className="flex flex-col items-center p-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6]">
+          <span className="text-[11px] text-slate-500 font-medium">Experience</span>
+          <span className="text-base font-extrabold text-[#1E1B2E] mt-0.5">{experienceScore}%</span>
         </div>
-        <div className="flex flex-col items-center p-2 rounded-xl bg-gray-900/60 border border-gray-800/80">
-          <span className="text-xs text-gray-400 font-medium">Semantic Fit</span>
-          <span className="text-base font-bold text-gray-200 mt-0.5">{semanticScore}%</span>
+        <div className="flex flex-col items-center p-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6]">
+          <span className="text-[11px] text-slate-500 font-medium">Semantic Fit</span>
+          <span className="text-base font-extrabold text-[#1E1B2E] mt-0.5">{semanticScore}%</span>
         </div>
       </div>
 
       {/* Responsible AI Disclaimer */}
       {disclaimer && (
-        <div className="mt-4 flex items-start gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/15 text-left">
-          <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-gray-400 leading-relaxed">
+        <div className="mt-4 flex items-start gap-2.5 p-3 rounded-2xl bg-purple-50/70 border border-purple-200/80 text-left">
+          <Info className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-purple-900 leading-relaxed font-medium">
             {disclaimer}
           </p>
         </div>

@@ -7,10 +7,10 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-dark-900 text-gray-400">
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F2FC] text-[#706886]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm tracking-wide">Loading CareerTech System...</p>
+          <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-semibold tracking-wide text-[#332D47]">Loading SkillBit System...</p>
         </div>
       </div>
     );

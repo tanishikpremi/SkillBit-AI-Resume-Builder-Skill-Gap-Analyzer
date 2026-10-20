@@ -82,6 +82,8 @@ DEFAULT_RECOMMENDATION = {
     "resource_url": "https://developer.mozilla.org/"
 }
 
+from app.ai.llm_service import llm_service
+
 def generate_recommendation_for_gap(
     skill_name: str,
     gap_status: str,
@@ -91,8 +93,10 @@ def generate_recommendation_for_gap(
     """
     Generates tailored, actionable recommendation for a specific detected gap.
     Adapts based on whether the skill was MISSING or merely WEAK_EVIDENCE.
+    Includes sequential step-by-step roadmap stages.
     """
     base_info = SKILL_KNOWLEDGE_BASE.get(skill_name, DEFAULT_RECOMMENDATION)
+    learning_path = llm_service.generate_sequential_roadmap(skill_name)
     
     if gap_status == "WEAK_EVIDENCE":
         bullet_advice = f"Strengthen your resume by rewriting your existing bullets to highlight quantifiable impact with {skill_name}, e.g.: 'Spearheaded implementation of {skill_name}, improving latency/efficiency by X%'."
@@ -105,9 +109,11 @@ def generate_recommendation_for_gap(
         "skill_name": skill_name,
         "learning_topic": f"{base_info['learning_topic']} ({skill_name})",
         "concepts": base_info["concepts"],
+        "learning_path": learning_path,
         "practice_project": base_info["practice_project"],
         "certification_name": base_info["certification_name"],
         "suggested_resume_bullet": bullet_advice,
         "action_plan": action_plan,
         "resource_url": base_info["resource_url"]
     }
+

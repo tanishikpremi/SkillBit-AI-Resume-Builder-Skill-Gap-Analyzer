@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict
 
 class RecommendationResponse(BaseModel):
@@ -11,6 +11,7 @@ class RecommendationResponse(BaseModel):
     priority: str
     learning_topic: str
     concepts: List[str] = []
+    learning_path: Optional[List[Dict[str, Any]]] = None
     practice_project: Optional[str] = None
     certification_name: Optional[str] = None
     suggested_resume_bullet: Optional[str] = None
@@ -29,3 +30,17 @@ class BulletSuggestionResponse(BaseModel):
     changes_explained: str
     is_editable: bool = True
     review_prompt: str
+
+class CustomRoadmapRequest(BaseModel):
+    skill_name: str
+    target_role: Optional[str] = "Software Engineer"
+    candidate_level: Optional[str] = "Intermediate"
+
+class CustomRoadmapResponse(BaseModel):
+    skill_name: str
+    target_role: str
+    total_stages: int
+    estimated_total_time: str
+    provider: str
+    learning_path: List[Dict[str, Any]]
+

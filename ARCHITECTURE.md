@@ -1,23 +1,25 @@
-# AI Resume Builder & Skill Gap Analyzer — Academic Architecture & Viva Defense Reference
+# SkillBit — AI Resume Builder & Skill Gap Analyzer — System Architecture & Viva Defense Reference
 
-> **Prepared for Academic Defense, Technical Viva, and Software Architecture Evaluation**
+> **Prepared for Academic Defense, Technical Viva, and Software Architecture Evaluation**  
+> *SkillBit: Bridging candidate profiles and modern Applicant Tracking Systems through transparent, explainable AI/NLP matching and multi-provider LLM orchestration.*
 
 ---
 
 ## 1. Executive Summary & Design Philosophy
 
-Commercial resume builders frequently make one of two fundamental mistakes:
-1. **Shallow Keyword Counters**: Rigid keyword counters that fail to recognize aliases, synonyms, or the depth of evidence in experience bullet points.
+Commercial resume builders and career-tech platforms frequently make one of two fundamental mistakes:
+1. **Shallow Keyword Counters**: Rigid regular-expression string counters that fail to recognize aliases, synonyms, or the depth of evidence in experience bullet points.
 2. **Opaque Black-Box Chatbots**: Pure generative LLM wrappers that fabricate candidate credentials, produce non-reproducible scores, and fail to explain why a skill is considered a gap.
 
-Our system implements a **Hybrid AI Architecture**:
-- **Deterministic Rules & Taxonomy**: Handles canonical normalization, alias mapping, mathematical scoring, security, authorization, and zero-fabrication guardrails.
-- **Natural Language Processing & Embeddings**: Handles structural section classification, gazetteer n-gram skill extraction, action-verb detection, and TF-IDF subword semantic similarity.
-- **Constrained Generative Layer**: Provides STAR-method bullet refinement strictly grounded in the candidate's actual text, and contextual explanations.
+SkillBit implements a **Layered Hybrid AI Architecture**:
+- **Deterministic Rules & Taxonomy Layer**: Handles canonical normalization, alias mapping, mathematical scoring, security, authorization, and zero-fabrication guardrails.
+- **Natural Language Processing & Embeddings Layer**: Handles structural section classification, gazetteer n-gram skill extraction, action-verb detection, and TF-IDF subword semantic similarity.
+- **Multi-Provider LLM Orchestration Layer**: Integrates Groq (Llama 3.3/3.1), Google Gemini (Gemini 1.5/2.5), xAI Grok, OpenAI (GPT-4o), and a zero-latency deterministic mock engine with automatic failover for STAR-bullet refinement and dynamic roadmap expansion.
+- **Visual & Document Generation Layer**: Generates SVG visual roadmap progression trees (`RoadmapTree.jsx`) and single-column, machine-readable ATS PDF documents via ReportLab with clickable contact hyperlinks.
 
 ---
 
-## 2. Core NLP & Matching Pipeline Architecture
+## 2. Core Pipeline Architecture
 
 ```
                     ┌────────────────────────┐
@@ -72,10 +74,17 @@ Our system implements a **Hybrid AI Architecture**:
                        │
                        ▼
       ┌─────────────────────────────────┐
-      │  Recommendation Engine & STAR   │
-      │  - Concepts, Projects, Certs    │
-      │  - User-Reviewable STAR Bullets │
-      └─────────────────────────────────┘
+      │  Multi-LLM Orchestration Layer  │ (Groq / Gemini / Grok / OpenAI / Mock)
+      │  - Failover Provider Router     │
+      │  - Anti-Hallucination Guardrails│
+      └────────────────┬────────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         ▼                           ▼
+┌──────────────────┐       ┌──────────────────┐
+│ Interactive SVG  │       │ STAR Bullet      │
+│ Roadmap Tree     │       │ Optimizer        │
+└──────────────────┘       └──────────────────┘
 ```
 
 ---
@@ -112,7 +121,22 @@ Where:
 
 ---
 
-## 5. Responsible AI & Anti-Hallucination Guardrails
+## 5. Multi-Provider LLM Fallback Architecture
+
+To ensure high availability and zero cost during academic demonstrations:
+1. **Dynamic Provider Discovery**:
+   - The application inspects available API keys on boot: `GROQ_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY`, `OPENAI_API_KEY`.
+2. **Cascading Automatic Fallback**:
+   - Primary: Fast free-tier providers (e.g., Groq Llama 3.3).
+   - Secondary: Google Gemini (Gemini 1.5 Flash / 2.5).
+   - Tertiary: OpenAI / Grok.
+   - Quaternary (Offline / Fallback): Deterministic Mock Generator producing pre-computed, schema-compliant JSON structures without external internet dependencies.
+3. **Structured Outputs & Schema Validation**:
+   - All LLM outputs are enforced and validated via Pydantic v2 schemas (`schemas/recommendation.py`). If JSON parsing fails, the system safely falls back to local curated templates.
+
+---
+
+## 6. Responsible AI & Anti-Hallucination Guardrails
 
 1. **Zero Qualification Invention**:
    - The AI is strictly barred from generating degrees, companies, job titles, certifications, or metrics not evidenced by the candidate.
@@ -120,5 +144,14 @@ Where:
    - Every AI-suggested bullet point presented to the candidate must support explicit **Accept**, **Edit**, or **Reject** actions.
 3. **No Employment Guarantees**:
    - Every score and dashboard clearly presents the legal and ethical disclaimer: *"This score is an automated ATS alignment indicator and does not guarantee employment or interview selection."*
-4. **Data Privacy**:
-   - Resumes are stored in a private directory with unique UUID filenames and are never publicly accessible.
+4. **Data Privacy & Storage Security**:
+   - Resumes are stored in a private directory with unique UUID filenames and are never publicly accessible via direct URLs.
+
+---
+
+## 7. Security & Authentication Architecture
+
+- **Passlib & Bcrypt**: Salted password hashing with automated work-factor enforcement.
+- **Stateless JWTs**: Access tokens signed with HMAC-SHA256 containing user ID, email, and role claims.
+- **Google OAuth 2.0**: ID token verification with automated account provisioning and seamless JWT bridge generation.
+- **Role-Based Access Control (RBAC)**: Distinct permissions for `candidate`, `mentor`, and `admin` roles, guarding analytical and taxonomy maintenance routes.

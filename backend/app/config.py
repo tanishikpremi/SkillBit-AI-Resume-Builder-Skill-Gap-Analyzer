@@ -6,9 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=[str(BASE_DIR / ".env"), ".env"], extra="ignore")
 
-    APP_NAME: str = "AI Resume Builder & Skill Gap Analyzer"
+    APP_NAME: str = "SkillBit - AI Resume Builder & Skill Gap Analyzer"
     API_V1_STR: str = "/api"
     SECRET_KEY: str = os.getenv("SECRET_KEY", "academic_prototype_super_secret_jwt_key_2026")
     ALGORITHM: str = "HS256"
@@ -30,9 +30,25 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
     
-    # LLM Settings (optional API key or Mock Mode for offline demonstration)
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    # LLM Settings (Free-tier providers: Groq, Gemini, Grok, OpenAI with automatic fallback)
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GROK_API_KEY: str = os.getenv("GROK_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    DEFAULT_LLM_PROVIDER: str = os.getenv("DEFAULT_LLM_PROVIDER", "auto")
     USE_MOCK_LLM_IF_NO_KEY: bool = True
+
+    # Google OAuth Settings
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
+    # SMTP / Email Notification Settings
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "SkillBit")
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
 
 settings = Settings()

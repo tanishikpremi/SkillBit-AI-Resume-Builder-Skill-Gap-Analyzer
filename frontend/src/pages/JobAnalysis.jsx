@@ -12,7 +12,11 @@ import {
   AlertCircle,
   Filter,
   CheckCircle2,
-  BookOpen
+  RefreshCw,
+  Target,
+  Lightbulb,
+  Compass,
+  Check
 } from 'lucide-react';
 
 export default function JobAnalysis() {
@@ -44,6 +48,20 @@ Preferred Qualifications:
   const [analysisResult, setAnalysisResult] = useState(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [error, setError] = useState('');
+  const [refreshingInsights, setRefreshingInsights] = useState(false);
+
+  const handleRefreshInsights = async () => {
+    if (!analysisResult?.id) return;
+    setRefreshingInsights(true);
+    try {
+      const res = await api.post(`/match/${analysisResult.id}/ai-insights`);
+      setAnalysisResult(prev => ({ ...prev, ai_insights: res.data }));
+    } catch (err) {
+      console.error("Failed to refresh AI insights:", err);
+    } finally {
+      setRefreshingInsights(false);
+    }
+  };
 
   useEffect(() => {
     fetchResumes();
@@ -117,27 +135,31 @@ Preferred Qualifications:
   }) || [];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fadeIn pb-16">
+    <div className="max-w-6xl mx-auto space-y-7 animate-fadeIn pb-16">
       <div>
-        <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-white">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-200/80 text-purple-700 text-xs font-semibold mb-2">
+          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+          Explainable Skill Gap Engine
+        </div>
+        <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#1E1B2E]">
           Job Fit & Skill Gap Analyzer
         </h1>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-[#706886] mt-1">
           Perform explainable semantic matching, classify required vs preferred criteria, and detect verified skills vs gaps.
         </p>
       </div>
 
       {/* Input Configuration Panel */}
-      <form onSubmit={handleRunEvaluation} className="glass-panel p-6 sm:p-7 rounded-2xl border border-gray-800 space-y-4">
+      <form onSubmit={handleRunEvaluation} className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-[#332D47] uppercase tracking-wider mb-1.5">
               Select Candidate Resume
             </label>
             <select
               value={selectedResumeId}
               onChange={e => setSelectedResumeId(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] font-medium focus:outline-none focus:border-purple-500 focus:bg-white transition-colors"
             >
               {resumes.length === 0 ? (
                 <option value="">No resumes found - please create or upload one</option>
@@ -152,7 +174,7 @@ Preferred Qualifications:
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-[#332D47] uppercase tracking-wider mb-1.5">
               Target Role Title
             </label>
             <input
@@ -161,12 +183,12 @@ Preferred Qualifications:
               value={jobTitle}
               onChange={e => setJobTitle(e.target.value)}
               placeholder="e.g. Senior Backend Engineer"
-              className="w-full px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-[#332D47] uppercase tracking-wider mb-1.5">
               Company (Optional)
             </label>
             <input
@@ -174,13 +196,13 @@ Preferred Qualifications:
               value={company}
               onChange={e => setCompany(e.target.value)}
               placeholder="e.g. Google, AWS, Stripe"
-              className="w-full px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition-colors"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-semibold text-[#332D47] uppercase tracking-wider mb-1.5">
             Target Job Description (Paste raw job posting text)
           </label>
           <textarea
@@ -189,12 +211,12 @@ Preferred Qualifications:
             value={rawText}
             onChange={e => setRawText(e.target.value)}
             placeholder="Paste job posting details here..."
-            className="w-full p-3.5 rounded-xl bg-gray-900 border border-gray-700 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono leading-relaxed"
+            className="w-full p-4 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white font-mono leading-relaxed transition-colors"
           />
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+          <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-pink-50 border border-pink-200 text-pink-700 text-xs font-medium">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -204,7 +226,7 @@ Preferred Qualifications:
           <button
             type="submit"
             disabled={analyzing}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shadow-md shadow-purple-600/20 hover:shadow-lg transition-all disabled:opacity-50 active:scale-[0.99]"
           >
             {analyzing ? 'Running Hybrid NLP Match Pipeline...' : (
               <>
@@ -219,86 +241,196 @@ Preferred Qualifications:
       {/* Analysis Results Display */}
       {analysisResult && (
         <div className="space-y-6 animate-fadeIn">
-          {/* Top Score Banner & Gauge */}
+          {/* Top Score & Breakdown Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-            {/* Gauge */}
-            <div className="lg:col-span-1">
+            {/* Visual Gauge */}
+            <div>
               <ScoreGauge
                 score={analysisResult.overall_score}
                 exactScore={analysisResult.exact_match_score}
-                experienceScore={analysisResult.experience_score}
                 semanticScore={analysisResult.semantic_score}
+                experienceScore={analysisResult.experience_score}
                 disclaimer={analysisResult.disclaimer}
               />
             </div>
 
             {/* Target Job Overview & Summary */}
-            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-gray-800 flex flex-col justify-between">
+            <div className="lg:col-span-2 bg-white p-6 sm:p-7 rounded-3xl border border-[#ECE5F6] shadow-saas flex flex-col justify-between">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold mb-2">
-                  <Briefcase className="w-3.5 h-3.5" />
-                  Target Evaluation Target
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold mb-2.5">
+                  <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+                  Target Evaluation Summary
                 </div>
-                <h3 className="font-heading font-extrabold text-xl text-white">
+                <h3 className="font-heading font-extrabold text-xl text-[#1E1B2E]">
                   {analysisResult.job_title} {analysisResult.company && `at ${analysisResult.company}`}
                 </h3>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-[#706886] mt-1 font-medium">
                   Evaluated {analysisResult.total_job_skills} key technical requirements.
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 mt-5">
-                  <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-800">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Matched Skills</span>
-                    <span className="text-xl font-extrabold text-emerald-400 mt-0.5 block">{analysisResult.matched_count}</span>
+                <div className="grid grid-cols-3 gap-3.5 mt-6">
+                  <div className="p-3.5 rounded-2xl bg-lime-50 border border-lime-200">
+                    <span className="text-[11px] uppercase font-bold text-lime-900 block">Matched Skills</span>
+                    <span className="text-2xl font-extrabold text-lime-700 mt-0.5 block">{analysisResult.matched_count}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-800">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Identified Gaps</span>
-                    <span className="text-xl font-extrabold text-rose-400 mt-0.5 block">
+                  <div className="p-3.5 rounded-2xl bg-pink-50 border border-pink-200">
+                    <span className="text-[11px] uppercase font-bold text-pink-900 block">Identified Gaps</span>
+                    <span className="text-2xl font-extrabold text-pink-700 mt-0.5 block">
                       {analysisResult.total_job_skills - analysisResult.matched_count}
                     </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-800">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Core Requirements</span>
-                    <span className="text-xl font-extrabold text-blue-400 mt-0.5 block">
+                  <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200">
+                    <span className="text-[11px] uppercase font-bold text-sky-900 block">Core Required</span>
+                    <span className="text-2xl font-extrabold text-sky-700 mt-0.5 block">
                       {analysisResult.gaps.filter(g => g.importance === 'REQUIRED').length}
                     </span>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-800 flex items-center justify-between">
-                <span className="text-xs text-gray-400">
-                  Ready to bridge these gaps?
-                </span>
+          {/* AI Career Intelligence Insights Card */}
+          {analysisResult.ai_insights && (
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-5 animate-fadeIn">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[#ECE5F6]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700 shadow-xs">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#1E1B2E]">
+                        AI Strategic Career Advisor
+                      </h3>
+                      {analysisResult.ai_insights.provider_used && (
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                          {analysisResult.ai_insights.provider_used}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#706886] mt-0.5">
+                      Synthesized executive readiness assessment and high-impact action recommendations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className={`text-[11px] font-extrabold uppercase tracking-wider px-3.5 py-1 rounded-full border ${
+                    analysisResult.ai_insights.readiness_pill_color === 'lime'
+                      ? 'bg-lime-50 text-lime-800 border-lime-200'
+                      : analysisResult.ai_insights.readiness_pill_color === 'rose'
+                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    {analysisResult.ai_insights.readiness_level || 'Evaluated'}
+                  </span>
+                  <button
+                    onClick={handleRefreshInsights}
+                    disabled={refreshingInsights}
+                    title="Re-run AI evaluation"
+                    className="p-2 rounded-xl bg-[#FAF8FD] hover:bg-purple-50 text-[#706886] hover:text-purple-700 border border-[#ECE5F6] transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshingInsights ? 'animate-spin text-purple-600' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Executive Summary */}
+              {analysisResult.ai_insights.executive_summary && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#9D93B4] block mb-1">
+                    Executive Career Assessment
+                  </span>
+                  <p className="text-xs sm:text-sm text-[#1E1B2E] font-medium leading-relaxed">
+                    "{analysisResult.ai_insights.executive_summary}"
+                  </p>
+                </div>
+              )}
+
+              {/* 2-Column Priorities & Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Priority Improvements */}
+                {analysisResult.ai_insights.top_improvement_priorities?.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                      Highest-Impact Improvement Areas
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#332D47]">
+                      {analysisResult.ai_insights.top_improvement_priorities.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-amber-600 font-bold mt-0.5">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Strategic Pre-Application Actions */}
+                {analysisResult.ai_insights.strategic_action_plan?.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-lime-50/50 border border-lime-200/80 space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-lime-900 flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-lime-600" />
+                      Recommended Next Actions
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#332D47]">
+                      {analysisResult.ai_insights.strategic_action_plan.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-lime-600 shrink-0 mt-0.5" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* CTA to Sequential Roadmaps */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-purple-50/60 p-4 rounded-2xl border border-purple-200/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-heading font-bold text-xs text-[#1E1B2E]">
+                      Explore roadmap.sh-Style Sequential Learning Trees
+                    </h4>
+                    <p className="text-[11px] text-[#706886]">
+                      Step-by-step topic roadmaps generated for your identified skill gaps.
+                    </p>
+                  </div>
+                </div>
                 <button
+                  type="button"
                   onClick={() => navigate(`/recommendations?analysisId=${analysisResult.id}`)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold transition-colors"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition-all shrink-0 active:scale-[0.99]"
                 >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>View Targeted Learning & Certification Roadmaps</span>
+                  <span>Open Skill Roadmaps</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Gaps List & Filter Controls */}
-          <div className="glass-panel p-6 rounded-2xl border border-gray-800 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-heading font-bold text-base text-white flex items-center gap-2">
-                <Filter className="w-4 h-4 text-blue-400" />
+          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#ECE5F6]">
+              <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2">
+                <Filter className="w-4 h-4 text-purple-600" />
                 Skill Breakdown & Evidence Analysis
               </h3>
 
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 text-xs flex-wrap">
                 {['ALL', 'STRONG_MATCH', 'WEAK_EVIDENCE', 'MISSING'].map(filter => (
                   <button
                     key={filter}
                     onClick={() => setFilterStatus(filter)}
-                    className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                    className={`px-3.5 py-1.5 rounded-full font-semibold transition-all ${
                       filterStatus === filter
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-800/80 text-gray-400 hover:text-white'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-[#FAF8FD] text-[#5C5572] hover:bg-purple-50 border border-[#ECE5F6]'
                     }`}
                   >
                     {filter.replace('_', ' ')}
@@ -307,7 +439,7 @@ Preferred Qualifications:
               </div>
             </div>
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-1">
               {filteredGaps.map((gap, idx) => (
                 <GapCard
                   key={idx}

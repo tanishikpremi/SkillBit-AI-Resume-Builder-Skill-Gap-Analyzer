@@ -11,9 +11,36 @@ def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
+from sqlalchemy import inspect, text
+
 def init_db(db: Session = None) -> None:
     # 1. Create all database tables
     Base.metadata.create_all(bind=engine)
+    
+    # 1b. Migrate new columns if upgrading existing SQLite DB
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(engine)
+            if "users" in inspector.get_table_names():
+                cols = [c["name"] for c in inspector.get_columns("users")]
+                if "google_id" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR(255)"))
+                    conn.commit()
+                if "picture" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN picture VARCHAR(500)"))
+                    conn.commit()
+            if "analysis_history" in inspector.get_table_names():
+                cols = [c["name"] for c in inspector.get_columns("analysis_history")]
+                if "ai_insights" not in cols:
+                    conn.execute(text("ALTER TABLE analysis_history ADD COLUMN ai_insights JSON"))
+                    conn.commit()
+            if "recommendations" in inspector.get_table_names():
+                cols = [c["name"] for c in inspector.get_columns("recommendations")]
+                if "learning_path" not in cols:
+                    conn.execute(text("ALTER TABLE recommendations ADD COLUMN learning_path JSON"))
+                    conn.commit()
+    except Exception as exc:
+        logger.warning(f"Schema migration note: {exc}")
     
     close_db_later = False
     if db is None:
@@ -53,19 +80,20 @@ def init_db(db: Session = None) -> None:
             db.commit()
             print(f"[SUCCESS] Seeded {len(CANONICAL_SKILLS)} canonical skills and their aliases.")
 
-        # 3. Seed default admin user if absent
-        admin_user = db.query(User).filter(User.email == "admin@careertech.ai").first()
-        if not admin_user:
-            admin_user = User(
-                email="admin@careertech.ai",
-                hashed_password=hash_password("AdminPass123!"),
-                full_name="System Administrator",
-                role="admin",
-                is_active=True
-            )
-            db.add(admin_user)
-            db.commit()
-            print("[SUCCESS] Seeded default administrator user: admin@careertech.ai")
+        # 3. Seed default admin users if absent
+        for admin_email in ["admin@skillbit.ai", "admin@careertech.ai"]:
+            admin_user = db.query(User).filter(User.email == admin_email).first()
+            if not admin_user:
+                admin_user = User(
+                    email=admin_email,
+                    hashed_password=hash_password("AdminPass123!"),
+                    full_name="SkillBit Administrator" if "skillbit" in admin_email else "System Administrator",
+                    role="admin",
+                    is_active=True
+                )
+                db.add(admin_user)
+                db.commit()
+                print(f"[SUCCESS] Seeded default administrator user: {admin_email}")
 
     except Exception as e:
         db.rollback()

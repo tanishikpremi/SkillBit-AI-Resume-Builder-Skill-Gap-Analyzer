@@ -12,10 +12,12 @@ class User(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)
     full_name = Column(String(255), nullable=False)
     role = Column(String(50), default="user")  # 'user', 'admin', 'mentor'
     is_active = Column(Boolean, default=True)
+    google_id = Column(String(255), unique=True, index=True, nullable=True)
+    picture = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

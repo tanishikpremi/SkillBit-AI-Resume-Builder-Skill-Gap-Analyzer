@@ -11,8 +11,14 @@ from app.schemas.match import MatchAnalyzeRequest, MatchAnalysisResponse, SkillG
 from app.api.deps import get_current_active_user
 from app.ai.matching_engine import calculate_match_metrics
 from app.ai.gap_analyzer import analyze_skill_gaps
+from app.ai.llm_service import llm_service
 
 router = APIRouter(prefix="/match", tags=["Match & Skill Gap Analysis"])
+
+@router.get("/llm-provider")
+def get_active_llm_provider():
+    """Returns active LLM provider and model for transparent UI indication."""
+    return llm_service.get_provider_info()
 
 @router.post("/analyze", response_model=MatchAnalysisResponse, status_code=status.HTTP_201_CREATED)
 def analyze_resume_job_match(
@@ -73,6 +79,17 @@ def analyze_resume_job_match(
         job_skills=job_skills_data
     )
 
+    # 6b. Generate Strategic Gap Insights via LLM (Groq/Gemini/Grok/Fallback)
+    ai_insights = llm_service.generate_gap_insights(
+        candidate_name=current_user.full_name or "Candidate",
+        job_title=job.title,
+        company=job.company or "",
+        overall_score=metrics["overall_score"],
+        matched_count=metrics["matched_count"],
+        total_skills=len(job_skills_data),
+        gaps_list=gaps_data
+    )
+
     # 7. Persist Analysis Record
     analysis = AnalysisHistory(
         user_id=current_user.id,
@@ -82,7 +99,8 @@ def analyze_resume_job_match(
         exact_match_score=metrics["exact_match_score"],
         semantic_score=metrics["semantic_score"],
         experience_score=metrics["experience_score"],
-        summary_notes=f"Evaluated against {len(job_skills_data)} skills with {metrics['matched_count']} matched."
+        summary_notes=f"Evaluated against {len(job_skills_data)} skills with {metrics['matched_count']} matched.",
+        ai_insights=ai_insights
     )
     db.add(analysis)
     db.flush()
@@ -132,6 +150,7 @@ def analyze_resume_job_match(
         matched_count=metrics["matched_count"],
         total_job_skills=metrics["total_job_skills"],
         summary_notes=analysis.summary_notes,
+        ai_insights=analysis.ai_insights,
         disclaimer=metrics["disclaimer"],
         created_at=analysis.created_at,
         gaps=gap_responses
@@ -206,7 +225,56 @@ def get_analysis_by_id(
         matched_count=len([g for g in gap_responses if g.gap_status == "STRONG_MATCH"]),
         total_job_skills=len(gap_responses),
         summary_notes=analysis.summary_notes,
+        ai_insights=analysis.ai_insights or llm_service.generate_gap_insights(
+            candidate_name=current_user.full_name or "Candidate",
+            job_title=analysis.job_description.title if analysis.job_description else "Target Job",
+            company=analysis.job_description.company if analysis.job_description else "",
+            overall_score=analysis.overall_score,
+            matched_count=len([g for g in gap_responses if g.gap_status == "STRONG_MATCH"]),
+            total_skills=len(gap_responses),
+            gaps_list=[{"canonical_name": g.skill_name, "gap_status": g.gap_status, "priority": g.priority} for g in gap_responses]
+        ),
         disclaimer="This score is an automated ATS alignment indicator and does not guarantee employment or interview selection.",
         created_at=analysis.created_at,
         gaps=gap_responses
     )
+
+@router.post("/{analysis_id}/ai-insights")
+def refresh_ai_gap_insights(
+    analysis_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Regenerates executive career intelligence insights for an existing analysis."""
+    analysis = db.query(AnalysisHistory).filter(
+        AnalysisHistory.id == analysis_id,
+        AnalysisHistory.user_id == current_user.id
+    ).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis record not found")
+
+    gaps = db.query(SkillGap).filter(SkillGap.analysis_id == analysis.id).all()
+    gaps_list = []
+    for g in gaps:
+        skill = db.query(Skill).filter(Skill.id == g.skill_id).first()
+        gaps_list.append({
+            "canonical_name": skill.canonical_name if skill else "Skill",
+            "gap_status": g.gap_status,
+            "priority": g.priority
+        })
+
+    matched_count = len([g for g in gaps if g.gap_status == "STRONG_MATCH"])
+    insights = llm_service.generate_gap_insights(
+        candidate_name=current_user.full_name or "Candidate",
+        job_title=analysis.job_description.title if analysis.job_description else "Target Role",
+        company=analysis.job_description.company if analysis.job_description else "",
+        overall_score=analysis.overall_score,
+        matched_count=matched_count,
+        total_skills=len(gaps_list),
+        gaps_list=gaps_list
+    )
+
+    analysis.ai_insights = insights
+    db.commit()
+    return insights
+

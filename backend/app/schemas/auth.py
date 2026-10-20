@@ -10,6 +10,7 @@ class Token(BaseModel):
     email: str
     full_name: str
     role: str
+    picture: Optional[str] = None
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None
@@ -25,6 +26,12 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    picture: Optional[str] = None
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,5 +40,6 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    picture: Optional[str] = None
     created_at: datetime
 

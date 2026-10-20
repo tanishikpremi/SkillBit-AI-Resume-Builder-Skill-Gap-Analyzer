@@ -81,8 +81,23 @@ def classify_resume_sections(raw_text: str) -> Dict[str, Any]:
     phone_match = CONTACT_PHONE_PATTERN.search(header_text)
     linkedin_match = CONTACT_LINKEDIN_PATTERN.search(header_text)
     github_match = CONTACT_GITHUB_PATTERN.search(header_text)
-    
+
+    # Detect candidate name from header lines
+    candidate_name = None
+    for h_line in sections["header"][:3]:
+        clean_name = h_line.strip()
+        # Ensure it's not an email, phone, or URL and has reasonable length
+        if (
+            clean_name
+            and len(clean_name) <= 60
+            and not ("@" in clean_name or "http" in clean_name.lower() or "github" in clean_name.lower() or "linkedin" in clean_name.lower())
+            and not re.search(r"\d{3,}", clean_name)
+        ):
+            candidate_name = clean_name
+            break
+
     contact_info = {
+        "full_name": candidate_name,
         "email": email_match.group(0) if email_match else None,
         "phone": phone_match.group(0) if phone_match else None,
         "linkedin": linkedin_match.group(0) if linkedin_match else None,

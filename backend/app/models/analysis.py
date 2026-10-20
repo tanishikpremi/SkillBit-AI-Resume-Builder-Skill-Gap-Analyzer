@@ -19,6 +19,7 @@ class AnalysisHistory(Base):
     experience_score = Column(Float, default=0.0)       # 0.0 - 100.0
     
     summary_notes = Column(Text, nullable=True)
+    ai_insights = Column(JSON, nullable=True)  # Structured LLM executive assessment & improvement priorities
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -57,6 +58,7 @@ class Recommendation(Base):
     
     learning_topic = Column(String(255), nullable=False)
     concepts = Column(JSON, default=list)  # List of core sub-concepts to master
+    learning_path = Column(JSON, default=list)  # Sequential step-by-step roadmap stages & topics
     practice_project = Column(Text, nullable=True)  # Concrete project idea to prove this skill
     certification_name = Column(String(255), nullable=True)  # Recommended certification if applicable
     suggested_resume_bullet = Column(Text, nullable=True)  # STAR-grounded bullet recommendation

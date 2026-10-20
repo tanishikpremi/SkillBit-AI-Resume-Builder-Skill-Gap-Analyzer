@@ -155,3 +155,26 @@ def test_skills_and_normalization_endpoints(test_client):
     assert norm_map.get("postgres") == "PostgreSQL"
     assert norm_map.get("python programming") == "Python"
     assert norm_map.get("docker containers") == "Docker"
+
+def test_google_login_auto_provisioning(test_client):
+    # 1. Test auto-provisioning a new Google user without manual signup
+    google_payload = {
+        "email": "google.user@example.com",
+        "full_name": "Google Test User",
+        "picture": "https://example.com/avatar.png"
+    }
+    resp = test_client.post("/api/auth/google", json=google_payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+    assert data["email"] == "google.user@example.com"
+    assert data["full_name"] == "Google Test User"
+    assert data["picture"] == "https://example.com/avatar.png"
+    token = data["access_token"]
+
+    # 2. Verify protected profile access works immediately
+    headers = {"Authorization": f"Bearer {token}"}
+    prof_resp = test_client.get("/api/profile", headers=headers)
+    assert prof_resp.status_code == 200
+    assert prof_resp.json()["user_id"] == data["user_id"]
+

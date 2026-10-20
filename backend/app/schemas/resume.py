@@ -33,3 +33,17 @@ class ResumeResponse(ResumeBase):
 class ResumeUploadResponse(ResumeResponse):
     extracted_skills: List[ResumeSkillInfo] = []
     detected_sections: Dict[str, Any] = {}
+
+class RepoAnalysisRequest(BaseModel):
+    repo_url: str
+    project_title: Optional[str] = None
+
+class RepoAnalysisResponse(BaseModel):
+    title: str
+    repo_url: str
+    description: Optional[str] = ""
+    technologies: List[str] = []
+    bullets: List[str] = []
+    stars: Optional[int] = None
+    language: Optional[str] = None
+

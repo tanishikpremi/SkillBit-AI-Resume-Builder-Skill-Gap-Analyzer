@@ -1,6 +1,10 @@
 import re
 from pathlib import Path
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz
+
 import docx
 
 def clean_extracted_text(text: str) -> str:

@@ -6,7 +6,6 @@ import {
   FileText, 
   User, 
   CheckCircle, 
-  BookOpen, 
   Shield, 
   LogOut, 
   Sparkles,
@@ -24,7 +23,6 @@ export default function Navbar() {
     { label: 'Builder', path: '/builder', icon: FileText },
     { label: 'Upload Resume', path: '/upload', icon: Upload },
     { label: 'Job Match', path: '/match', icon: Briefcase },
-    { label: 'Roadmaps', path: '/recommendations', icon: BookOpen },
   ];
 
   if (user?.role === 'admin') {
@@ -34,18 +32,18 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="sticky top-0 z-50 glass-panel border-b border-gray-800 px-4 lg:px-8 py-3.5">
+    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#ECE5F6] px-4 lg:px-8 py-3.5 shadow-xs">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand */}
-        <Link to="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
-            <Sparkles className="w-5 h-5 text-white" />
+        <Link to="/upload" className="flex items-center gap-2.5 group">
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <span className="font-heading font-bold text-lg text-white tracking-tight flex items-center gap-1.5">
-              CareerTech <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">AI</span>
+            <span className="font-heading font-extrabold text-base text-[#1E1B2E] tracking-tight flex items-center gap-1.5">
+              SkillBit
             </span>
-            <p className="text-[10px] text-gray-400 tracking-wider uppercase font-medium">Resume & Skill Gap Engine</p>
+            <p className="text-[9px] text-[#706886] tracking-wider uppercase font-semibold">Resume & Skill Gap Engine</p>
           </div>
         </Link>
 
@@ -58,13 +56,13 @@ export default function Navbar() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                   active
-                    ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-800/60'
+                    ? 'bg-purple-50 text-purple-700 border border-purple-200 shadow-xs'
+                    : 'text-[#706886] hover:text-[#1E1B2E] hover:bg-[#FAF8FD]'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${active ? 'text-blue-400' : 'text-gray-400'}`} />
+                <Icon className={`w-3.5 h-3.5 ${active ? 'text-purple-600' : 'text-[#9D93B4]'}`} />
                 {item.label}
               </Link>
             );
@@ -73,14 +71,25 @@ export default function Navbar() {
 
         {/* User Info & Logout */}
         <div className="flex items-center gap-3">
+          {user?.picture ? (
+            <img
+              src={user.picture}
+              alt={user.full_name || 'User'}
+              className="w-8 h-8 rounded-full border border-purple-200 object-cover ring-2 ring-purple-100"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700 font-bold text-xs">
+              {user?.full_name?.charAt(0) || 'U'}
+            </div>
+          )}
           <div className="hidden sm:flex flex-col text-right">
-            <span className="text-xs font-semibold text-gray-200">{user?.full_name}</span>
-            <span className="text-[10px] text-gray-400 uppercase tracking-wider">{user?.role}</span>
+            <span className="text-xs font-semibold text-[#1E1B2E]">{user?.full_name}</span>
+            <span className="text-[10px] text-[#706886] uppercase tracking-wider font-semibold">{user?.role}</span>
           </div>
           <button
             onClick={logout}
             title="Sign out"
-            className="p-2 rounded-lg bg-gray-800/80 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-gray-700 hover:border-red-500/30 transition-colors"
+            className="p-2 rounded-xl bg-[#FAF8FD] hover:bg-rose-50 text-[#706886] hover:text-rose-600 border border-[#ECE5F6] hover:border-rose-200 transition-colors"
           >
             <LogOut className="w-4 h-4" />
           </button>

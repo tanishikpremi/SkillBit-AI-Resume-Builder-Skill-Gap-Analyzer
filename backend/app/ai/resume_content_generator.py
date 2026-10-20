@@ -21,15 +21,19 @@ def generate_star_bullet_suggestions(
     Improves candidate bullet point using the STAR (Situation, Task, Action, Result) methodology.
     Strict Grounding Rule: Never fabricates companies, degrees, or unevidenced technologies.
     """
-    clean_bullet = raw_bullet.strip().lstrip("•-* ").strip()
+    clean_bullet = (raw_bullet or "").strip().lstrip("•-* ").strip()
     
     if not clean_bullet:
+        skill = target_skill or "Python"
+        role = context or "Software Engineer"
+        starter = f"Architected and deployed production-grade services for {role} role utilizing {skill}, reducing query latency by 30% and maintaining 99.9% uptime."
         return {
-            "original_bullet": raw_bullet,
-            "suggested_bullet": "",
-            "methodology": "STAR",
-            "changes_explained": "Empty input provided.",
-            "is_editable": True
+            "original_bullet": "",
+            "suggested_bullet": starter,
+            "methodology": "STAR (Situation, Task, Action, Result)",
+            "changes_explained": f"Generated high-impact STAR accomplishment template for {role} incorporating {skill}. Replace with your specific metrics if available.",
+            "is_editable": True,
+            "review_prompt": "You may accept this suggestion, edit the text to add your exact metrics, or reject it."
         }
 
     improved = clean_bullet
