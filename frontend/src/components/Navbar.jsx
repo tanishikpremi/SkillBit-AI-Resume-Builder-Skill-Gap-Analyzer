@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/logo.png';
 import { 
   Briefcase, 
   FileText, 
@@ -36,8 +37,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand */}
         <Link to="/upload" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-2xl bg-[#11121F] border border-purple-500/30 flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform p-1.5">
-            <img src="/logo.png" alt="SkillBit Logo" className="w-full h-full object-contain" />
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform p-1.5">
+            <img src={logoImg} alt="SkillBit Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <span className="font-heading font-extrabold text-base text-[#1E1B2E] tracking-tight flex items-center gap-1.5">

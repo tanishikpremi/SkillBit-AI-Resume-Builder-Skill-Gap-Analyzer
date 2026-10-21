@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, ArrowRight, Lock, Mail, User, AlertCircle } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 export default function Register() {
   const [fullName, setFullName] = useState('');
@@ -47,8 +48,8 @@ export default function Register() {
     <div className="min-h-screen bg-[#F5F2FC] glow-mesh flex items-center justify-center p-4 selection:bg-purple-200 selection:text-purple-900">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-16 h-16 rounded-3xl bg-[#11121F] border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/25 mb-3 ring-4 ring-white p-2.5">
-            <img src="/logo.png" alt="SkillBit Logo" className="w-full h-full object-contain" />
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-purple-500/25 mb-3 ring-4 ring-white p-3">
+            <img src={logoImg} alt="SkillBit Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-[#1E1B2E] tracking-tight flex items-center gap-2">
             Create Your Account

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/logo.png';
 import { 
   Upload, 
   LayoutDashboard, 
@@ -46,8 +47,8 @@ export default function Sidebar() {
           onClick={() => setMobileOpen(false)}
           className="flex items-center gap-3 group"
         >
-          <div className="w-10 h-10 rounded-2xl bg-[#181A2A] border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-900/30 group-hover:scale-105 transition-all duration-200 shrink-0 p-1.5">
-            <img src="/logo.png" alt="SkillBit Logo" className="w-full h-full object-contain" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-purple-900/30 group-hover:scale-105 transition-all duration-200 shrink-0 p-2">
+            <img src={logoImg} alt="SkillBit Logo" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
             <span className="font-heading font-extrabold text-base text-white tracking-tight flex items-center gap-2 truncate">
@@ -141,8 +142,8 @@ export default function Sidebar() {
       {/* Mobile Top Header */}
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-[#11121F] border-b border-[#1E2135]">
         <Link to="/upload" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-[#181A2A] border border-purple-500/30 flex items-center justify-center p-1">
-            <img src="/logo.png" alt="SkillBit Logo" className="w-full h-full object-contain" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center p-1.5">
+            <img src={logoImg} alt="SkillBit Logo" className="w-full h-full object-contain" />
           </div>
           <span className="font-heading font-extrabold text-sm text-white flex items-center gap-1.5">
             SkillBit
