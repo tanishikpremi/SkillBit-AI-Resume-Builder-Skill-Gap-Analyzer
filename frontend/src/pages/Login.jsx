@@ -58,8 +58,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-purple-500/25 mb-3 ring-4 ring-white">
-            <Sparkles className="w-7 h-7 text-white" />
+          <div className="w-16 h-16 rounded-3xl bg-[#11121F] border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/25 mb-3 ring-4 ring-white p-2.5">
+            <img src="/logo.png" alt="SkillBit Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-[#1E1B2E] tracking-tight flex items-center gap-2">
             SkillBit

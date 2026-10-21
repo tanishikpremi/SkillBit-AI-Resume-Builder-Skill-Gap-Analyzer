@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/favicon.svg" alt="SkillBit Logo" width="84" height="84" />
+<img src="LOGO.png" alt="SkillBit Logo" width="96" height="96" />
 
 # ⚡ SkillBit
 ### **Explainable AI Resume Builder, ATS Job Matcher & Visual Skill Gap Engine**
