@@ -48,5 +48,10 @@ class AnalysisHistorySummary(BaseModel):
     resume_id: str
     job_id: str
     job_title: str
+    company: Optional[str] = None
+    resume_title: Optional[str] = None
     overall_score: float
+    exact_match_score: Optional[float] = None
+    semantic_score: Optional[float] = None
+    experience_score: Optional[float] = None
     created_at: datetime

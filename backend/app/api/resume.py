@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.user import User
@@ -32,6 +32,7 @@ router = APIRouter(prefix="/resume", tags=["Resume Management"])
 @router.post("/upload", response_model=ResumeUploadResponse, status_code=status.HTTP_201_CREATED)
 def upload_resume(
     file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -54,7 +55,7 @@ def upload_resume(
         extracted_skills = extract_resume_skill_profile(sections, db)
         
         # 4b. Automatically generate structured Candidate Profile from resume
-        default_title = filename.rsplit(".", 1)[0]
+        default_title = (title.strip() if title and title.strip() else filename.rsplit(".", 1)[0])
         generated_profile = extract_structured_profile_from_sections(
             sections=sections,
             extracted_skills=extracted_skills,
@@ -144,6 +145,7 @@ def upload_resume(
 
         structured_json = {
             "filename": filename,
+            "raw_text": raw_text,
             "full_name": generated_profile.get("full_name") or current_user.full_name,
             "headline": generated_profile.get("headline") or "",
             "contact_info": contact_merged,
@@ -221,12 +223,37 @@ def create_builder_resume(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
+    structured = dict(resume_in.structured_json or {})
+    raw_text = structured.get("raw_text") or ""
+    if not raw_text:
+        parts = [
+            structured.get("full_name") or "",
+            structured.get("designation") or structured.get("headline") or "",
+            structured.get("summary") or "",
+            ", ".join(str(s) for s in (structured.get("skills") or []) if s),
+        ]
+        for exp in (structured.get("experiences") or []):
+            if isinstance(exp, dict):
+                parts.append(f"{exp.get('role_title', '')} {exp.get('company', '')}")
+                parts.extend(exp.get("bullets") or [])
+        for proj in (structured.get("projects") or []):
+            if isinstance(proj, dict):
+                parts.append(f"{proj.get('title', '')} {', '.join(proj.get('technologies') or [])}")
+                parts.extend(proj.get("bullets") or [])
+        raw_text = "\n".join(p for p in parts if p)
+
+    if raw_text and not structured.get("extracted_skills"):
+        sections = classify_resume_sections(raw_text)
+        structured["extracted_skills"] = extract_resume_skill_profile(sections, db)
+
+    ats_val = structured.get("ats_score")
     resume = Resume(
         user_id=current_user.id,
         title=resume_in.title,
-        source_type="builder",
-        structured_json=resume_in.structured_json,
-        ats_score=85.0,  # Built with ATS-compliant builder
+        source_type=structured.get("source_type") or "builder",
+        raw_text=raw_text,
+        structured_json=structured,
+        ats_score=float(ats_val) if ats_val is not None else 85.0,
         is_active=True
     )
     db.add(resume)
@@ -272,8 +299,36 @@ def update_resume(
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
         
+    structured = dict(resume_update.structured_json or {})
+    raw_text = structured.get("raw_text") or resume.raw_text or ""
+    if not structured.get("raw_text"):
+        parts = [
+            structured.get("full_name") or "",
+            structured.get("designation") or structured.get("headline") or "",
+            structured.get("summary") or "",
+            ", ".join(str(s) for s in (structured.get("skills") or []) if s),
+        ]
+        for exp in (structured.get("experiences") or []):
+            if isinstance(exp, dict):
+                parts.append(f"{exp.get('role_title', '')} {exp.get('company', '')}")
+                parts.extend(exp.get("bullets") or [])
+        for proj in (structured.get("projects") or []):
+            if isinstance(proj, dict):
+                parts.append(f"{proj.get('title', '')} {', '.join(proj.get('technologies') or [])}")
+                parts.extend(proj.get("bullets") or [])
+        built_text = "\n".join(p for p in parts if p)
+        if built_text:
+            raw_text = built_text
+
+    if raw_text and not structured.get("extracted_skills"):
+        sections = classify_resume_sections(raw_text)
+        structured["extracted_skills"] = extract_resume_skill_profile(sections, db)
+
     resume.title = resume_update.title
-    resume.structured_json = resume_update.structured_json
+    resume.raw_text = raw_text
+    resume.structured_json = structured
+    if structured.get("ats_score") is not None:
+        resume.ats_score = float(structured["ats_score"])
     db.commit()
     db.refresh(resume)
     return resume

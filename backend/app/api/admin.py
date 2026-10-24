@@ -51,6 +51,48 @@ def get_admin_cohort_metrics(
         func.count(Skill.id)
     ).group_by(Skill.category).all()
 
+    # Registered users list & live candidate evaluation telemetry
+    all_users = db.query(User).order_by(User.created_at.desc()).all()
+    registered_users = [
+        {
+            "id": u.id,
+            "name": u.full_name or u.email.split("@")[0],
+            "email": u.email,
+            "role": u.role,
+            "provider": "google" if u.google_id else "email",
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in all_users
+    ]
+
+    live_candidates = []
+    for u in all_users:
+        if u.role == "admin":
+            continue
+        user_analyses = db.query(AnalysisHistory).filter(
+            AnalysisHistory.user_id == u.id
+        ).order_by(AnalysisHistory.created_at.desc()).all()
+        if not user_analyses:
+            continue
+        latest = user_analyses[0]
+        missing_names = []
+        for g in latest.gaps:
+            if g.gap_status == "MISSING":
+                sk = db.query(Skill).filter(Skill.id == g.skill_id).first()
+                if sk:
+                    missing_names.append(sk.canonical_name)
+        live_candidates.append({
+            "id": u.id,
+            "name": u.full_name or u.email.split("@")[0],
+            "email": u.email,
+            "program": "Registered",
+            "role": latest.job_description.title if latest.job_description else "Software Engineer",
+            "fit": round(float(latest.overall_score)),
+            "missing": missing_names,
+            "analyses": len(user_analyses),
+            "live": True,
+        })
+
     return {
         "cohort_overview": {
             "total_candidates": total_users,
@@ -64,7 +106,9 @@ def get_admin_cohort_metrics(
         },
         "taxonomy_stats": {
             row[0]: row[1] for row in category_counts
-        }
+        },
+        "registered_users": registered_users,
+        "live_candidates": live_candidates,
     }
 
 @router.post("/skills", response_model=SkillResponse, status_code=status.HTTP_201_CREATED)

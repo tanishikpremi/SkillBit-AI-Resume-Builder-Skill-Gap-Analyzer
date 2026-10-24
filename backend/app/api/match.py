@@ -171,11 +171,31 @@ def get_match_history(
             resume_id=a.resume_id,
             job_id=a.job_id,
             job_title=a.job_description.title if a.job_description else "Target Job",
+            company=a.job_description.company if a.job_description else "",
+            resume_title=a.resume.title if a.resume else "Resume",
             overall_score=a.overall_score,
+            exact_match_score=a.exact_match_score,
+            semantic_score=a.semantic_score,
+            experience_score=a.experience_score,
             created_at=a.created_at
         )
         for a in analyses
     ]
+
+@router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_analysis(
+    analysis_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    analysis = db.query(AnalysisHistory).filter(
+        AnalysisHistory.id == analysis_id,
+        AnalysisHistory.user_id == current_user.id
+    ).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis record not found")
+    db.delete(analysis)
+    db.commit()
 
 @router.get("/{analysis_id}", response_model=MatchAnalysisResponse)
 def get_analysis_by_id(

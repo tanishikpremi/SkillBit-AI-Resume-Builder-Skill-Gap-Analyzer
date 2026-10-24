@@ -24,6 +24,7 @@ class ResumeResponse(ResumeBase):
     user_id: str
     source_type: str
     file_path: Optional[str] = None
+    raw_text: Optional[str] = None
     structured_json: Dict[str, Any] = {}
     ats_score: Optional[float] = None
     is_active: bool

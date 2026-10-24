@@ -32,6 +32,10 @@ class GoogleAuthRequest(BaseModel):
     full_name: Optional[str] = None
     picture: Optional[str] = None
 
+class PasswordChangeRequest(BaseModel):
+    current_password: Optional[str] = None
+    new_password: str
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

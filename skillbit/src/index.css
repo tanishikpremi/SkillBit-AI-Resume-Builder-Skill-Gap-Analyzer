@@ -1,0 +1,240 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Tomorrow:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+/*
+ * The design specifies "PP Neue Machina" (Inktrap Regular) and "Dx Neuegrid Free Personal Use".
+ * Neither could be resolved for this Make file, so Space Grotesk and Tomorrow are loaded as fallbacks.
+ */
+/*
+ * Three-colour palette. Every surface, border and tint in the app is one of
+ * these colours, or a mix of them via opacity / color-mix.
+ *   ink    — graphite, the dark ground and dark text
+ *   bone   — warm ivory, the light ground and light text
+ *   accent — electric cyan #04E3EC, the single highlight (CTAs, focus, gaps)
+ */
+@theme {
+  --font-machina: 'PP Neue Machina', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-grid: 'Dx Neuegrid Free Personal Use', 'Tomorrow', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #11151c;
+  --color-bone: #f4f1ea;
+}
+
+/* Semantic roles resolve at the element that uses them, so a `.theme-dark`
+   island inside the light theme recomputes every derived surface too. */
+@theme inline {
+  --color-fg: var(--fg);
+  --color-canvas: var(--canvas);
+  --color-surface: color-mix(in oklab, var(--fg) 5%, var(--canvas));
+  --color-band: color-mix(in oklab, var(--fg) 3.5%, var(--canvas));
+  --color-band-deep: color-mix(in oklab, var(--fg) 1.5%, var(--canvas));
+  --color-chrome: color-mix(in oklab, var(--fg) 2.5%, var(--canvas));
+  --color-accent: var(--accent);
+}
+
+:root {
+  color-scheme: dark;
+  --accent-base: #04e3ec;
+  --fg: var(--color-bone);
+  --canvas: var(--color-ink);
+  --accent: var(--accent-base);
+}
+/* Cyan is only 1.4:1 on bone, so light mode deepens it toward ink (~5.5:1)
+   wherever it carries text or data. */
+:root.light {
+  color-scheme: light;
+  --fg: var(--color-ink);
+  --canvas: var(--color-bone);
+  --accent: color-mix(in oklab, var(--accent-base) 42%, var(--color-ink));
+}
+/* Islands that stay dark in both themes (final CTA, auth aside). */
+:root.light .theme-dark {
+  color-scheme: dark;
+  color: var(--fg);
+  --fg: var(--color-bone);
+  --canvas: var(--color-ink);
+  --accent: var(--accent-base);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-machina);
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background-color 0.2s,
+      color 0.2s;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--canvas);
+  }
+}
+
+@layer components {
+  /* Film-grain overlay matching the hero illustration texture */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.18;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* Glassmorphic CTA: frosted, cyan-tinted pane with a lit top edge. */
+  .btn-glass {
+    --glass-tint: 26%;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    color: var(--fg);
+    border-color: color-mix(in oklab, var(--accent-base) 60%, transparent);
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--accent-base) var(--glass-tint), transparent),
+      color-mix(in oklab, var(--accent-base) 6%, transparent)
+    );
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--color-bone) 50%, transparent),
+      inset 0 -1px 0 color-mix(in oklab, var(--color-ink) 18%, transparent),
+      0 12px 32px -14px color-mix(in oklab, var(--accent-base) 70%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
+    transition:
+      background 0.25s,
+      border-color 0.25s,
+      box-shadow 0.25s,
+      transform 0.25s;
+  }
+  /* Specular sheen across the upper half of the pane. */
+  .btn-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 50% 0;
+    z-index: -1;
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-bone) 22%, transparent),
+      transparent
+    );
+    pointer-events: none;
+  }
+  .btn-glass:hover {
+    --glass-tint: 40%;
+    border-color: var(--accent-base);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--color-bone) 60%, transparent),
+      inset 0 -1px 0 color-mix(in oklab, var(--color-ink) 18%, transparent),
+      0 16px 44px -12px color-mix(in oklab, var(--accent-base) 85%, transparent);
+  }
+  .btn-glass:active {
+    transform: translateY(1px);
+  }
+  /* On bone the pane needs a touch more tint to read as glass. */
+  :root.light .btn-glass {
+    --glass-tint: 38%;
+  }
+  :root.light .btn-glass:hover {
+    --glass-tint: 55%;
+  }
+  :root.light .theme-dark .btn-glass {
+    --glass-tint: 26%;
+  }
+
+  /* Monochrome photography toned into the palette. */
+  .photo-tone {
+    mix-blend-mode: luminosity;
+    opacity: 0.4;
+  }
+  :root.light .photo-tone {
+    mix-blend-mode: multiply;
+    opacity: 0.85;
+  }
+  :root.light .theme-dark .photo-tone {
+    mix-blend-mode: luminosity;
+    opacity: 0.4;
+  }
+
+  .grid-lines {
+    --grid-line: color-mix(in oklab, var(--color-fg) 5%, transparent);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .field {
+    width: 100%;
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+    padding: 0.75rem 0.9rem;
+    font-size: 0.95rem;
+    color: var(--color-fg);
+    outline: none;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+  }
+  .field::placeholder {
+    color: color-mix(in oklab, var(--color-fg) 40%, transparent);
+  }
+  .field:focus {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+  }
+
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-fg) 20%, transparent) transparent;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes scan {
+  0% {
+    top: 0%;
+  }
+  100% {
+    top: 100%;
+  }
+}
+.scanline {
+  animation: scan 1.6s linear infinite;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    position: absolute;
+    inset: 0;
+    box-shadow: none !important;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

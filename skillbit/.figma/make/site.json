@@ -1,0 +1,10 @@
+{
+  "description": "Provides a seamless user experience with a cohesive design language, offering full navigation, authentication, and interactive app interfaces for efficient use.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

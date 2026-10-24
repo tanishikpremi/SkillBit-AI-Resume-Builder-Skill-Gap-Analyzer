@@ -83,6 +83,23 @@ def test_admin_and_placement_metrics(test_client):
     assert "cohort_overview" in data
     assert data["cohort_overview"]["total_candidates"] >= 1
     assert "placement_insights" in data
+    assert "registered_users" in data
+    assert "live_candidates" in data
+
+    # 2b. Verify demo@skillbit.ai & admin1234 login support for skillbit frontend
+    demo_login = client.post("/api/auth/login", json={
+        "email": "demo@skillbit.ai",
+        "password": "demo1234"
+    })
+    assert demo_login.status_code == 200
+    assert demo_login.json()["email"] == "demo@skillbit.ai"
+
+    admin_demo_login = client.post("/api/auth/login", json={
+        "email": "admin@skillbit.ai",
+        "password": "admin1234"
+    })
+    assert admin_demo_login.status_code == 200
+    assert admin_demo_login.json()["role"] == "admin"
 
     # 3. Create new skill via Admin
     new_skill_res = client.post("/api/admin/skills", headers=admin_headers, json={

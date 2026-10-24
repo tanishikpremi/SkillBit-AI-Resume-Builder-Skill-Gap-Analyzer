@@ -210,9 +210,15 @@ def init_db(db: Session = None) -> None:
                 db.commit()
                 print(f"[SUCCESS] Seeded default administrator user: {admin_email}")
 
-        # 4. Seed default demo candidate user on application startup
+        # 4. Seed default demo candidate users on application startup
         if close_db_later:
             seed_demo_candidate(db)
+            seed_demo_candidate(
+                db,
+                email="demo@skillbit.ai",
+                password="demo1234",
+                full_name="Maya Chen"
+            )
 
     except Exception as e:
         db.rollback()
