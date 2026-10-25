@@ -64,15 +64,15 @@ function Hero() {
       {/* A rising staircase: the next step, with open wall space for the copy. */}
       <Backdrop position="65% 70%" />
 
-      <header className="relative z-20 flex shrink-0 items-center justify-between px-6 pt-4 md:pl-[clamp(24px,3.385vw,60px)] md:pr-[clamp(24px,5vw,88px)] md:pt-[clamp(14px,2.2vh,32px)]">
+      <header className="relative z-20 flex shrink-0 items-center justify-between px-6 pt-5 md:pl-[clamp(28px,4vw,72px)] md:pr-[clamp(28px,5vw,88px)] md:pt-[clamp(18px,2.8vh,38px)]">
         <Link
           to="/"
           aria-label="SkillBit home"
-          className="block size-[clamp(48px,7.5vh,84px)] shrink-0"
+          className="block size-[clamp(44px,6.5vh,72px)] shrink-0"
         >
           <LogoMark className="size-full" label="SkillBit" />
         </Link>
-        <nav className="hidden items-center gap-[clamp(24px,3.6vw,64px)] font-machina text-[clamp(14px,1.15vw,20px)] leading-normal whitespace-nowrap text-fg md:flex">
+        <nav className="hidden items-center gap-[clamp(28px,3.8vw,64px)] font-machina text-[clamp(13px,0.95vw,16px)] tracking-[0.14em] leading-normal whitespace-nowrap text-fg/80 md:flex">
           {navItems.map((n) =>
             n.route ? (
               <Link
@@ -93,8 +93,8 @@ function Hero() {
             ),
           )}
           <ThemeToggle
-            className="size-[clamp(36px,4.5vh,42px)] border-fg/40"
-            iconSize={18}
+            className="size-[clamp(36px,4.2vh,42px)] border-fg/35"
+            iconSize={17}
           />
         </nav>
         <div className="flex items-center gap-2 md:hidden">
@@ -136,9 +136,9 @@ function Hero() {
         </div>
       )}
 
-      <div className="relative z-10 flex flex-1 flex-col items-start justify-center px-6 pb-8 pt-4 md:pl-[5.52vw] md:pr-[5.6vw] md:pb-[clamp(24px,5vh,56px)] md:pt-0">
-        {/* Tag with four red squares (nodes 9:28, 9:44, 9:43, 9:45) */}
-        <div className="relative inline-flex items-center px-[clamp(18px,1.5vw,28px)] py-[clamp(8px,1.1vh,14px)]">
+      <div className="relative z-10 flex flex-1 flex-col items-start justify-center px-6 pb-10 pt-6 md:pl-[5.52vw] md:pr-[5.6vw] md:pb-[clamp(32px,6vh,68px)] md:pt-0">
+        {/* 1. Eyebrow Tag — compact, wide-tracked label */}
+        <div className="relative inline-flex items-center px-[clamp(18px,1.4vw,26px)] py-[clamp(9px,1.15vh,13px)]">
           {[
             "left-0 top-0",
             "right-0 top-0",
@@ -148,28 +148,33 @@ function Hero() {
             <span
               key={p}
               className={cx(
-                "absolute size-[clamp(8px,0.9vw,14px)] bg-accent",
+                "absolute size-[clamp(7px,0.65vw,11px)] bg-accent",
                 p,
               )}
             />
           ))}
-          <p className="font-grid font-medium text-[clamp(11px,min(1.1vw,2vh),18px)] leading-normal whitespace-nowrap text-fg">
+          <p className="font-grid font-medium text-[clamp(11px,min(0.9vw,1.6vh),14px)] tracking-[0.22em] leading-none whitespace-nowrap text-fg/80">
             AI-POWERED CAREER INTELLIGENCE
           </p>
         </div>
 
-        <h1 className="mt-[clamp(12px,2vh,22px)] font-grid font-semibold text-[clamp(32px,min(4.2vw,7.5vh),72px)] leading-[1.06] text-fg">
+        {/* 2. Primary Display Headline — dominant visual anchor */}
+        <h1 className="mt-[clamp(22px,3.4vh,38px)] font-grid font-semibold text-[clamp(38px,min(4.6vw,8.2vh),84px)] leading-[1.04] tracking-[-0.01em] text-fg">
           <span className="block">Your next opportunity</span>
-          <span className="block text-accent">starts with you.</span>
+          <span className="mt-[clamp(4px,0.6vh,8px)] block text-accent">
+            starts with you.
+          </span>
         </h1>
 
-        <p className="mt-[clamp(10px,1.6vh,18px)] max-w-[clamp(280px,42vw,720px)] font-machina text-[clamp(15px,min(1.45vw,2.6vh),24px)] leading-[1.3] tracking-[0.03em] text-fg/90">
+        {/* 3. Supporting Lead Paragraph — readable measure & softer contrast */}
+        <p className="mt-[clamp(22px,3.2vh,34px)] max-w-[clamp(300px,38vw,640px)] font-machina text-[clamp(16px,min(1.3vw,2.3vh),22px)] leading-[1.55] tracking-[0.015em] text-fg/75">
           Build an ATS-ready resume, discover how well you match your dream job,
           and turn skill gaps into a clear learning path.
         </p>
 
-        <div className="mt-[clamp(18px,3.2vh,36px)] flex items-center gap-[clamp(12px,0.8vw,16px)] pl-[clamp(0px,0.3vw,6px)]">
-          <ArrowMark className="w-[clamp(24px,2vw,38px)] -scale-x-100" />
+        {/* 4. Call-to-Action Row — clear separation from copy */}
+        <div className="mt-[clamp(30px,4.6vh,52px)] flex items-center gap-[clamp(16px,1.2vw,24px)] pl-[clamp(2px,0.4vw,8px)]">
+          <ArrowMark className="w-[clamp(28px,2.2vw,42px)] -scale-x-100" />
           <ButtonLink to={user ? "/app/upload" : "/signup"} size="hero">
             Analyze my resume
           </ButtonLink>
@@ -234,7 +239,7 @@ function Metrics() {
     [`${BASE_TAXONOMY.length}+`, "Canonical skills"],
     [`${aliasCount(BASE_TAXONOMY)}+`, "Normalized aliases"],
     ["4", "Evidence tiers"],
-    ["5", "LLM providers with failover"],
+    ["12", "Technical domain categories"],
   ]
   return (
     <div className="border-y border-fg/10 bg-band">
@@ -540,42 +545,45 @@ function Features() {
           className="lg:col-span-2"
         >
           <p>
-            Live split-screen editor with a single-column preview. Paste a
-            public repo URL to pull stars, language and topics, then draft three
+            Structured section editor with paginated A4 preview. Paste a public
+            repo URL to pull stars, language and topics, then draft three
             accomplishment bullets.
           </p>
         </FeatureCard>
 
         <FeatureCard
-          icon={<Cpu size={20} />}
-          title="Multi-LLM failover"
-          eyebrow="Resilience"
+          icon={<GraduationCap size={20} />}
+          title="Master profile & cohort analytics"
+          eyebrow="Intelligence"
           className="lg:col-span-2"
         >
           <div className="mt-1 flex flex-wrap items-center gap-2 font-grid text-[13px]">
-            {["Groq", "Gemini", "Grok", "OpenAI", "Local engine"].map(
-              (p, i, arr) => (
-                <span key={p} className="flex items-center gap-2">
-                  <span
-                    className={cx(
-                      "border px-2.5 py-1",
-                      i === arr.length - 1
-                        ? "border-accent text-accent"
-                        : "border-fg/20",
-                    )}
-                  >
-                    {p}
-                  </span>
-                  {i < arr.length - 1 && (
-                    <ArrowRight size={14} className="text-fg/40" />
+            {[
+              "Auto-extract",
+              "Master profile",
+              "A4 PDF export",
+              "Cohort telemetry",
+            ].map((p, i, arr) => (
+              <span key={p} className="flex items-center gap-2">
+                <span
+                  className={cx(
+                    "border px-2.5 py-1",
+                    i === arr.length - 1
+                      ? "border-accent text-accent"
+                      : "border-fg/20",
                   )}
+                >
+                  {p}
                 </span>
-              ),
-            )}
+                {i < arr.length - 1 && (
+                  <ArrowRight size={14} className="text-fg/40" />
+                )}
+              </span>
+            ))}
           </div>
           <p className="mt-4">
-            Zero-downtime orchestration with schema-validated JSON and an
-            offline fallback.
+            Sync parsed resumes into a reusable career profile and track
+            readiness across target roles and placement cohorts.
           </p>
         </FeatureCard>
       </div>

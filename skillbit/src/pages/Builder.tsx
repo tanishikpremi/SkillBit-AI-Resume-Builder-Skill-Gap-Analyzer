@@ -10,6 +10,8 @@ import {
   Bold,
   Check,
   Download,
+  ExternalLink,
+  Eye,
   FolderGit2,
   Globe,
   Italic,
@@ -24,7 +26,6 @@ import {
   Table as TableIcon,
   Trash2,
   Underline,
-  Upload,
   UserRound,
   WandSparkles,
   X,
@@ -507,7 +508,16 @@ function Sec({ title, accentColor, children }: SecProps) {
   )
 }
 
-function Preview({ d }: { d: BuilderDraft }) {
+interface A4Block {
+  key: string
+  weight: number
+  node: ReactNode
+}
+
+function buildA4Pages(d: BuilderDraft): {
+  pages: A4Block[][]
+  fontClass: string
+} {
   const st = d.styleSettings
   const accent = st?.accent_color
   const fontClass =
@@ -529,6 +539,18 @@ function Preview({ d }: { d: BuilderDraft }) {
         ? "leading-relaxed"
         : "leading-snug"
 
+  const scaleFactor =
+    (st?.font_size === "compact"
+      ? 0.88
+      : st?.font_size === "comfortable"
+        ? 1.14
+        : 1.0) *
+    (st?.line_spacing === "tight"
+      ? 0.9
+      : st?.line_spacing === "relaxed"
+        ? 1.15
+        : 1.0)
+
   const contact = [
     d.email,
     d.phone,
@@ -541,92 +563,147 @@ function Preview({ d }: { d: BuilderDraft }) {
       .map((l) => `${l.label || "Link"}: ${l.url}`),
   ].filter(Boolean)
 
-  const list = (items: Entry[]) =>
-    items
-      .filter((e) => e.title || e.org)
-      .map((e) => (
-        <div key={e.id} className="mb-3">
-          <div className="flex justify-between gap-4 text-[12.5px]">
-            <span>
-              <b>{e.title}</b>
-              {e.org && <span className="text-ink/65"> — {e.org}</span>}
-              {e.location && (
-                <span className="text-ink/55"> · {e.location}</span>
-              )}
-              {e.gpa && <span className="text-ink/65"> · GPA: {e.gpa}</span>}
-            </span>
-            <span className="shrink-0 text-ink/55">{e.period}</span>
-          </div>
-          {e.link && <div className="text-[11px] text-ink/55">{e.link}</div>}
-          {e.bullets.some((b) => b.trim()) && (
-            <ul
-              className={cx(
-                "mt-1 list-disc space-y-0.5 pl-4 text-ink/85",
-                sizeClass,
-                leadClass,
-              )}
-            >
-              {e.bullets
-                .filter((b) => b.trim())
-                .map((b, i) => (
-                  <li key={i}>{renderRichText(b)}</li>
-                ))}
-            </ul>
+  const renderEntry = (e: Entry) => (
+    <div key={e.id} className="mb-3">
+      <div className="flex justify-between gap-4 text-[12.5px]">
+        <span>
+          <b>{e.title}</b>
+          {e.org && <span className="text-ink/65"> — {e.org}</span>}
+          {e.location && <span className="text-ink/55"> · {e.location}</span>}
+          {e.gpa && <span className="text-ink/65"> · GPA: {e.gpa}</span>}
+        </span>
+        <span className="shrink-0 text-ink/55">{e.period}</span>
+      </div>
+      {e.link && <div className="text-[11px] text-ink/55">{e.link}</div>}
+      {e.bullets.some((b) => b.trim()) && (
+        <ul
+          className={cx(
+            "mt-1 list-disc space-y-0.5 pl-4 text-ink/85",
+            sizeClass,
+            leadClass,
           )}
-        </div>
-      ))
-
-  const hasSkillCats =
-    d.skillCategories &&
-    d.skillCategories.some((c) => c.category && c.skills?.length > 0)
-
-  return (
-    <div
-      id="print-area"
-      className={cx(
-        "min-h-[1000px] bg-bone px-10 py-10 text-ink shadow-[0_30px_80px_-20px_color-mix(in_oklab,var(--color-ink)_55%,transparent)]",
-        fontClass,
-      )}
-    >
-      <h1 className="text-[24px] font-bold leading-tight">
-        {d.name || "Your Name"}
-      </h1>
-      {d.designation && (
-        <div
-          className="mt-0.5 text-[12.5px] font-semibold"
-          style={accent ? { color: accent } : undefined}
         >
-          {d.designation}
-        </div>
+          {e.bullets
+            .filter((b) => b.trim())
+            .map((b, i) => (
+              <li key={i}>{renderRichText(b)}</li>
+            ))}
+        </ul>
       )}
-      {contact.length > 0 && (
-        <div className="mt-1 text-[11.5px] text-ink/65">
-          {contact.join("  |  ")}
-        </div>
-      )}
-      {d.summary.trim() && (
+    </div>
+  )
+
+  const estimateEntryWeight = (e: Entry) => {
+    const bulletLines = e.bullets
+      .filter((b) => b.trim())
+      .reduce((acc, b) => acc + Math.max(1, Math.ceil(b.length / 85)), 0)
+    return (32 + bulletLines * 20) * scaleFactor
+  }
+
+  const blocks: A4Block[] = []
+
+  // 1. Header Block
+  blocks.push({
+    key: "header",
+    weight: 85 * scaleFactor,
+    node: (
+      <div className="mb-4">
+        <h1 className="text-[24px] font-bold leading-tight">
+          {d.name || "Your Name"}
+        </h1>
+        {d.designation && (
+          <div
+            className="mt-0.5 text-[12.5px] font-semibold"
+            style={accent ? { color: accent } : undefined}
+          >
+            {d.designation}
+          </div>
+        )}
+        {contact.length > 0 && (
+          <div className="mt-1 text-[11.5px] text-ink/65">
+            {contact.join("  |  ")}
+          </div>
+        )}
+      </div>
+    ),
+  })
+
+  // 2. Summary Block
+  if (d.summary.trim()) {
+    const lines = Math.max(1, Math.ceil(d.summary.length / 95))
+    blocks.push({
+      key: "summary",
+      weight: (38 + lines * 18) * scaleFactor,
+      node: (
         <Sec title="Summary" accentColor={accent}>
           <p className={cx(sizeClass, leadClass)}>
             {renderRichText(d.summary)}
           </p>
         </Sec>
-      )}
-      {d.experience.some((e) => e.title || e.org) && (
-        <Sec title="Experience" accentColor={accent}>
-          {list(d.experience)}
-        </Sec>
-      )}
-      {d.projects.some((e) => e.title || e.org) && (
-        <Sec title="Projects" accentColor={accent}>
-          {list(d.projects)}
-        </Sec>
-      )}
-      {d.education.some((e) => e.title || e.org) && (
+      ),
+    })
+  }
+
+  // 3. Experience Blocks
+  const filledExp = d.experience.filter((e) => e.title || e.org)
+  filledExp.forEach((e, idx) => {
+    blocks.push({
+      key: `exp-${e.id}-${idx}`,
+      weight: (idx === 0 ? 30 : 0) + estimateEntryWeight(e),
+      node:
+        idx === 0 ? (
+          <Sec title="Experience" accentColor={accent}>
+            {renderEntry(e)}
+          </Sec>
+        ) : (
+          <div className="mt-2">{renderEntry(e)}</div>
+        ),
+    })
+  })
+
+  // 4. Projects Blocks
+  const filledProj = d.projects.filter((e) => e.title || e.org)
+  filledProj.forEach((e, idx) => {
+    blocks.push({
+      key: `proj-${e.id}-${idx}`,
+      weight: (idx === 0 ? 30 : 0) + estimateEntryWeight(e),
+      node:
+        idx === 0 ? (
+          <Sec title="Projects" accentColor={accent}>
+            {renderEntry(e)}
+          </Sec>
+        ) : (
+          <div className="mt-2">{renderEntry(e)}</div>
+        ),
+    })
+  })
+
+  // 5. Education Blocks
+  const filledEdu = d.education.filter((e) => e.title || e.org)
+  if (filledEdu.length > 0) {
+    blocks.push({
+      key: "education",
+      weight:
+        (34 + filledEdu.reduce((a, e) => a + estimateEntryWeight(e), 0)) *
+        scaleFactor,
+      node: (
         <Sec title="Education" accentColor={accent}>
-          {list(d.education)}
+          {filledEdu.map(renderEntry)}
         </Sec>
-      )}
-      {(hasSkillCats || d.skills.trim()) && (
+      ),
+    })
+  }
+
+  // 6. Skills Block
+  const hasSkillCats =
+    d.skillCategories &&
+    d.skillCategories.some((c) => c.category && c.skills?.length > 0)
+  if (hasSkillCats || d.skills.trim()) {
+    const catCount = hasSkillCats ? d.skillCategories!.length : 2
+    blocks.push({
+      key: "skills",
+      weight: (40 + catCount * 24) * scaleFactor,
+      node: (
         <Sec title="Skills" accentColor={accent}>
           {hasSkillCats ? (
             d.skillsDisplayMode === "table" ? (
@@ -661,65 +738,138 @@ function Preview({ d }: { d: BuilderDraft }) {
             <p className={cx(sizeClass, leadClass)}>{d.skills}</p>
           )}
         </Sec>
-      )}
-      {d.customTables &&
-        d.customTables.map((tbl, tIdx) => (
-          <Sec
-            key={tIdx}
-            title={tbl.title || "Additional Matrix"}
-            accentColor={accent}
-          >
-            <table className="w-full border-collapse border border-ink/20 text-[11.5px]">
-              {tbl.headers.length > 0 && (
-                <thead>
-                  <tr className="border-b border-ink/20 bg-ink/[0.05]">
-                    {tbl.headers.map((h, hi) => (
-                      <th key={hi} className="px-2.5 py-1.5 text-left font-bold">
-                        {renderRichText(h)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-              )}
-              <tbody>
-                {tbl.rows.map((row, ri) => (
-                  <tr key={ri} className="border-b border-ink/15">
-                    {row.map((cell, ci) => (
-                      <td key={ci} className="px-2.5 py-1.5">
-                        {renderRichText(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Sec>
-        ))}
-      {d.certifications && d.certifications.some((c) => c.name) && (
+      ),
+    })
+  }
+
+  // 7. Custom Tables
+  ;(d.customTables ?? []).forEach((tbl, tIdx) => {
+    blocks.push({
+      key: `table-${tIdx}`,
+      weight: (55 + tbl.rows.length * 26) * scaleFactor,
+      node: (
+        <Sec
+          title={tbl.title || "Additional Matrix"}
+          accentColor={accent}
+        >
+          <table className="w-full border-collapse border border-ink/20 text-[11.5px]">
+            {tbl.headers.length > 0 && (
+              <thead>
+                <tr className="border-b border-ink/20 bg-ink/[0.05]">
+                  {tbl.headers.map((h, hi) => (
+                    <th key={hi} className="px-2.5 py-1.5 text-left font-bold">
+                      {renderRichText(h)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {tbl.rows.map((row, ri) => (
+                <tr key={ri} className="border-b border-ink/15">
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-2.5 py-1.5">
+                      {renderRichText(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Sec>
+      ),
+    })
+  })
+
+  // 8. Certifications
+  const filledCerts = (d.certifications ?? []).filter((c) => c.name)
+  if (filledCerts.length > 0) {
+    blocks.push({
+      key: "certs",
+      weight: (36 + filledCerts.length * 20) * scaleFactor,
+      node: (
         <Sec title="Certifications & Honors" accentColor={accent}>
           <ul className={cx("list-disc space-y-0.5 pl-4", sizeClass)}>
-            {d.certifications
-              .filter((c) => c.name)
-              .map((c, ci) => (
-                <li key={ci}>
-                  <b>{c.name}</b>
-                  {c.issuer ? ` — ${c.issuer}` : ""}
-                  {c.date ? ` (${c.date})` : ""}
-                </li>
-              ))}
+            {filledCerts.map((c, ci) => (
+              <li key={ci}>
+                <b>{c.name}</b>
+                {c.issuer ? ` — ${c.issuer}` : ""}
+                {c.date ? ` (${c.date})` : ""}
+              </li>
+            ))}
           </ul>
         </Sec>
-      )}
-      {d.languages && d.languages.some((l) => l.language) && (
+      ),
+    })
+  }
+
+  // 9. Languages
+  const filledLangs = (d.languages ?? []).filter((l) => l.language)
+  if (filledLangs.length > 0) {
+    blocks.push({
+      key: "langs",
+      weight: 48 * scaleFactor,
+      node: (
         <Sec title="Languages" accentColor={accent}>
           <p className={sizeClass}>
-            {d.languages
-              .filter((l) => l.language)
+            {filledLangs
               .map((l) => `${l.language} (${l.proficiency || "Professional"})`)
               .join("  •  ")}
           </p>
         </Sec>
-      )}
+      ),
+    })
+  }
+
+  // Paginate blocks into A4 sheets (900 height units per A4 sheet)
+  const MAX_A4_WEIGHT = 900
+  const pages: A4Block[][] = [[]]
+  let currentWeight = 0
+
+  for (const b of blocks) {
+    if (
+      pages[pages.length - 1].length > 0 &&
+      currentWeight + b.weight > MAX_A4_WEIGHT
+    ) {
+      pages.push([b])
+      currentWeight = b.weight
+    } else {
+      pages[pages.length - 1].push(b)
+      currentWeight += b.weight
+    }
+  }
+
+  return { pages, fontClass }
+}
+
+function A4PaginatedPreview({ d }: { d: BuilderDraft }) {
+  const { pages, fontClass } = useMemo(() => buildA4Pages(d), [d])
+  return (
+    <div id="print-area" className="flex flex-col items-center gap-8">
+      {pages.map((pageBlocks, pageIdx) => (
+        <div key={pageIdx} className="w-full max-w-[794px]">
+          <div className="mb-2 flex items-center justify-between font-grid text-[11px] uppercase tracking-[0.18em] text-fg/55 print:hidden">
+            <span>
+              A4 Page {pageIdx + 1} of {pages.length}
+            </span>
+            <span>210 × 297 mm</span>
+          </div>
+          <div
+            className={cx(
+              "a4-sheet relative mx-auto flex min-h-[1123px] w-full flex-col justify-between bg-bone px-10 py-11 text-ink shadow-[0_25px_70px_-15px_rgba(0,0,0,0.65)] sm:px-14 sm:py-12",
+              fontClass,
+            )}
+          >
+            <div>{pageBlocks.map((b) => <div key={b.key}>{b.node}</div>)}</div>
+            <div className="mt-8 flex items-center justify-between border-t border-ink/10 pt-2 text-[10px] text-ink/45">
+              <span>{d.name || "Candidate Resume"}</span>
+              <span>
+                Page {pageIdx + 1} of {pages.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -748,6 +898,7 @@ export default function Builder() {
   const [repoErr, setRepoErr] = useState("")
   const [saved, setSaved] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   // AI Auto-format & Messy Text Fixer state
   const [autoFormatting, setAutoFormatting] = useState(false)
@@ -1046,6 +1197,42 @@ export default function Builder() {
     }
   }
 
+  const openStandalonePopupWindow = () => {
+    const el = document.getElementById("print-area")
+    if (!el) return
+    const win = window.open(
+      "",
+      "_blank",
+      "width=920,height=980,menubar=no,toolbar=no,location=no,status=no",
+    )
+    if (!win) return
+    const styles = Array.from(
+      document.querySelectorAll('style, link[rel="stylesheet"]'),
+    )
+      .map((n) => n.outerHTML)
+      .join("\n")
+    win.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${d.name || "Resume"} — A4 Preview</title>
+  ${styles}
+  <style>
+    body { background: #11151c; color: #f4f1ea; margin: 0; padding: 32px 16px; }
+    .a4-sheet { page-break-after: always; break-after: page; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .a4-sheet { box-shadow: none !important; margin: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+  ${el.outerHTML}
+</body>
+</html>`)
+    win.document.close()
+  }
+
   return (
     <>
       <PageHeader
@@ -1054,6 +1241,9 @@ export default function Builder() {
         desc="Single-column, standard headings, rich text styling and server-side ReportLab PDF generation. Changes save automatically."
         actions={
           <>
+            <Button variant="ghost" onClick={() => setPreviewOpen(true)}>
+              <Eye size={17} /> Show preview
+            </Button>
             <Button
               variant="ghost"
               disabled={autoFormatting}
@@ -1240,8 +1430,8 @@ export default function Builder() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className="min-w-0">
+      <div className="min-w-0">
+        <div>
           <div className="mb-4 flex gap-px overflow-x-auto bg-fg/10 scroll-thin">
             {TABS.map((t) => (
               <button
@@ -1876,7 +2066,7 @@ export default function Builder() {
             )}
           </div>
 
-          <div className="mt-4 grid gap-px bg-fg/10 sm:grid-cols-3">
+          <div className="mt-4 grid gap-px bg-fg/10 sm:grid-cols-4">
             <div className="bg-surface p-4">
               <div className="font-grid text-[11px] uppercase tracking-[0.18em] text-fg/50">
                 ATS score
@@ -1908,11 +2098,28 @@ export default function Builder() {
             <div className="flex flex-col justify-center gap-2 bg-surface p-4">
               <Button
                 size="sm"
+                variant="ghost"
+                onClick={() => setPreviewOpen(true)}
+              >
+                <Eye size={15} /> Show A4 preview
+              </Button>
+              <Button
+                size="sm"
                 variant={saved ? "white" : "primary"}
                 onClick={saveAsResume}
               >
                 <Save size={15} />{" "}
                 {saved ? "Saved to resumes" : "Save as resume"}
+              </Button>
+            </div>
+            <div className="flex flex-col justify-center gap-2 bg-surface p-4">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={exportingPdf}
+                onClick={handleExportPdf}
+              >
+                <Printer size={15} /> Export ATS PDF
               </Button>
               <Button
                 size="sm"
@@ -1924,16 +2131,51 @@ export default function Builder() {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="min-w-0">
-          <div className="mb-3 font-grid text-[11px] uppercase tracking-[0.2em] text-fg/50">
-            Live preview · Letter
+      {/* A4 Paginated Live Preview Popup Window */}
+      <Modal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title="Resume preview · A4 pages"
+        width="max-w-5xl"
+      >
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border border-fg/12 bg-fg/[0.02] p-3.5 print:hidden">
+          <div className="text-xs text-fg/65">
+            Standard A4 pagination (<span className="font-grid text-fg">210 × 297 mm</span>) · Single-column ATS layout
           </div>
-          <div className="xl:sticky xl:top-6">
-            <Preview d={d} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={openStandalonePopupWindow}
+            >
+              <ExternalLink size={14} /> Open in new window
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => window.print()}
+            >
+              <Printer size={14} /> Print A4
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={exportingPdf}
+              onClick={handleExportPdf}
+            >
+              {exportingPdf ? (
+                <LoaderCircle size={14} className="animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}{" "}
+              Export ATS PDF
+            </Button>
           </div>
         </div>
-      </div>
+        <A4PaginatedPreview d={d} />
+      </Modal>
 
       {/* STAR Bullet Optimizer Modal (Human-in-the-loop Accept / Edit / Reject) */}
       <Modal

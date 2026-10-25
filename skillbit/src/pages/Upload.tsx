@@ -21,6 +21,7 @@ import {
   Empty,
   EvidenceBadge,
   Label,
+  Modal,
   Panel,
   PageHeader,
   cx,
@@ -175,9 +176,7 @@ export default function Upload() {
   const [drag, setDrag] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [selected, setSelected] = useState<string | null>(
-    data.resumes[0]?.id ?? null,
-  )
+  const [selected, setSelected] = useState<string | null>(null)
 
   // Auto-generated profile decision prompt state
   const [uploadedDoc, setUploadedDoc] = useState<ResumeDoc | null>(null)
@@ -218,7 +217,6 @@ export default function Upload() {
           resumes: [doc, ...d.resumes.filter((x) => x.id !== doc.id)],
         }))
         setText(doc.text)
-        setSelected(doc.id)
         setPendingFile(null)
         setUploadedDoc(doc)
         const gen = res.generated_profile || {}
@@ -271,13 +269,13 @@ export default function Upload() {
   }
 
   const save = async (thenMatch: boolean) => {
-    // If file was already uploaded and text wasn't modified, just navigate or select
+    // If file was already uploaded and text wasn't modified, just navigate or clear input
     if (uploadedDoc && text === uploadedDoc.text) {
+      const id = uploadedDoc.id
       setText("")
       setTitle("")
       setFileName(undefined)
-      setSelected(uploadedDoc.id)
-      if (thenMatch) navigate(`/app/match?resume=${uploadedDoc.id}`)
+      if (thenMatch) navigate(`/app/match?resume=${id}`)
       return
     }
 
@@ -303,7 +301,6 @@ export default function Upload() {
         setTitle("")
         setFileName(undefined)
         setPendingFile(null)
-        setSelected(doc.id)
         setUploadedDoc(doc)
         const gen = res.generated_profile || {}
         setProfileTitleInput(
@@ -333,7 +330,6 @@ export default function Upload() {
     setTitle("")
     setFileName(undefined)
     setPendingFile(null)
-    setSelected(doc.id)
     if (thenMatch) navigate(`/app/match?resume=${doc.id}`)
   }
 
@@ -703,25 +699,17 @@ export default function Upload() {
         </Panel>
 
         <Panel
-          title={
-            preview
-              ? "Live parse preview"
-              : viewing
-                ? viewing.title
-                : "Parse report"
-          }
-          eyebrow={preview ? "Active parse" : "Saved resume"}
+          title={preview ? "Live parse preview" : "Parse report"}
+          eyebrow={preview ? "Unsaved input" : "Waiting for input"}
         >
           <div className="p-5">
             {preview ? (
               <ParsedReport parsed={preview} />
-            ) : viewing ? (
-              <ParsedReport parsed={viewing.parsed} />
             ) : (
               <Empty
                 icon={<FileText size={24} />}
                 title="Nothing parsed yet"
-                body="Drop a PDF, DOCX or TXT file or paste text — the evidence report updates automatically."
+                body="Drop a PDF, DOCX or TXT file or paste text on the left — the evidence report updates as you type. Click any saved resume below to inspect its full report in a popup window."
               />
             )}
           </div>
@@ -731,7 +719,7 @@ export default function Upload() {
       <Panel
         className="mt-6"
         title="Your resumes"
-        eyebrow={`${data.resumes.length} on file`}
+        eyebrow={`${data.resumes.length} on file · click a resume to inspect`}
       >
         {data.resumes.length === 0 ? (
           <p className="p-5 text-sm text-fg/55">No saved resumes yet.</p>
@@ -741,12 +729,13 @@ export default function Upload() {
               <li
                 key={r.id}
                 className={cx(
-                  "flex flex-wrap items-center gap-4 px-5 py-4",
-                  selected === r.id && !preview && "bg-fg/[0.04]",
+                  "flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-fg/[0.03]",
+                  selected === r.id && "bg-fg/[0.05]",
                 )}
               >
-                <FileText size={20} className="text-fg/50" />
+                <FileText size={20} className="text-accent" />
                 <button
+                  type="button"
                   className="min-w-0 flex-1 text-left"
                   onClick={() => setSelected(r.id)}
                 >
@@ -784,6 +773,81 @@ export default function Upload() {
           </ul>
         )}
       </Panel>
+
+      {/* Saved Resume Inspector Popup Modal */}
+      <Modal
+        open={!!viewing}
+        onClose={() => setSelected(null)}
+        title={viewing?.title ?? "Resume details"}
+        width="max-w-4xl"
+      >
+        {viewing && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border border-fg/12 bg-fg/[0.02] p-4">
+              <div className="space-y-1">
+                <div className="font-grid text-[11px] uppercase tracking-[0.18em] text-accent">
+                  {viewing.source} resume · saved {timeAgo(viewing.createdAt)}
+                  {viewing.fileName ? ` · ${viewing.fileName}` : ""}
+                </div>
+                <div className="text-xs text-fg/65">
+                  {[
+                    viewing.parsed.contact.name,
+                    viewing.parsed.contact.email,
+                    viewing.parsed.contact.phone,
+                    ...viewing.parsed.contact.links,
+                  ]
+                    .filter(Boolean)
+                    .join("  •  ") || "Contact details parsed from resume"}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const doc = viewing
+                    setSelected(null)
+                    handleOpenInBuilder(doc)
+                  }}
+                >
+                  <Hammer size={14} /> Open in builder
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    const id = viewing.id
+                    setSelected(null)
+                    navigate(`/app/match?resume=${id}`)
+                  }}
+                >
+                  <Target size={14} /> Match a job
+                </Button>
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  onClick={() => handleDeleteResume(viewing)}
+                >
+                  <Trash2 size={14} /> Delete
+                </Button>
+              </div>
+            </div>
+
+            <ParsedReport parsed={viewing.parsed} />
+
+            {viewing.text && (
+              <div className="border-t border-fg/10 pt-5">
+                <div className="mb-2 font-grid text-[11px] uppercase tracking-[0.18em] text-fg/50">
+                  Extracted resume text
+                </div>
+                <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap border border-fg/12 bg-fg/[0.02] p-4 font-mono text-xs leading-relaxed text-fg/75 scroll-thin">
+                  {viewing.text}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </>
   )
 }

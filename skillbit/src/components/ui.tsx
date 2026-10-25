@@ -4,6 +4,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react"
+import { createPortal } from "react-dom"
 import { Link } from "react-router"
 import { Moon, Sun, X } from "lucide-react"
 import { useTheme } from "../lib/theme"
@@ -180,8 +181,8 @@ const BTN_SIZE: Record<BtnSize, string> = {
   sm: "min-h-9 px-3 text-sm",
   md: "min-h-11 px-4 text-base",
   lg: "min-h-14 px-4 text-xl",
-  // Sized to fit comfortably within a single 100dvh hero screen.
-  hero: "px-[clamp(16px,1.4vw,24px)] py-[clamp(10px,1.4vh,14px)] text-[clamp(15px,min(1.3vw,2.4vh),22px)] leading-tight",
+  // Prominent hero CTA button with balanced padding and tracking.
+  hero: "px-[clamp(22px,1.8vw,32px)] py-[clamp(13px,1.7vh,18px)] text-[clamp(16px,min(1.25vw,2.2vh),22px)] tracking-[0.03em] leading-tight",
 }
 const btnClass = (variant: BtnVariant, size: BtnSize, className?: string) =>
   cx(
@@ -527,27 +528,33 @@ export function Modal({
 }) {
   useEffect(() => {
     if (!open) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener("keydown", onKey)
+    }
   }, [open, onClose])
-  if (!open) return null
-  return (
+  if (!open || typeof document === "undefined") return null
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="absolute inset-0 bg-ink/80 backdrop-blur-sm"
+        className="fixed inset-0 bg-ink/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className={cx("rise relative w-full", width)}>
+      <div className={cx("rise relative z-10 w-full", width)}>
         <Bracketed size={9} className="p-1">
-          <div className="max-h-[85dvh] overflow-y-auto scroll-thin border border-fg/15 bg-surface">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-fg/10 bg-surface px-6 py-4">
+          <div className=" flex max-h-[88dvh] flex-col border border-fg/15 bg-surface shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-fg/10 bg-surface px-6 py-4">
               <h3 className="font-grid text-xl font-semibold">{title}</h3>
               <button
+                type="button"
                 onClick={onClose}
                 className="p-1 text-fg/60 hover:text-fg"
                 aria-label="Close"
@@ -555,11 +562,12 @@ export function Modal({
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6">{children}</div>
+            <div className="overflow-y-auto scroll-thin p-6">{children}</div>
           </div>
         </Bracketed>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
