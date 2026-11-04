@@ -246,7 +246,7 @@ export default function Roadmaps() {
       <PageHeader
         eyebrow={`Recommendations · ${data.llmProvider || "SkillBit Engine"}`}
         title="Learning roadmaps"
-        desc="Every gap becomes four sequential stages — foundations, architecture, production and a capstone that proves competence on your resume."
+        desc="Every gap becomes four sequential stages: foundations, architecture, production and a capstone that proves competence on your resume."
       />
 
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">

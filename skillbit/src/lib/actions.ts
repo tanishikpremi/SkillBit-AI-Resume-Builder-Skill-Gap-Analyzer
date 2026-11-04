@@ -62,7 +62,7 @@ export function draftToText(d: BuilderDraft) {
     lines.push(head)
     for (const e of filled) {
       lines.push(
-        [e.title, e.org].filter(Boolean).join(" — ") +
+        [e.title, e.org].filter(Boolean).join(" - ") +
           (e.period ? ` (${e.period})` : ""),
       )
       if (e.link) lines.push(e.link)

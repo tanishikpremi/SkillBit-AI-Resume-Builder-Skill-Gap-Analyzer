@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   CircleHelp,
+  Compass,
   Download,
   FileUp,
   Hammer,
@@ -34,6 +35,7 @@ import { useTheme } from "../lib/theme"
 const CANDIDATE_NAV = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/app/upload", label: "Resumes", icon: FileUp },
+  { to: "/app/jobs", label: "Job finder", icon: Compass },
   { to: "/app/match", label: "Job match", icon: Target },
   { to: "/app/roadmaps", label: "Roadmaps", icon: Route },
   { to: "/app/builder", label: "Resume builder", icon: Hammer },
@@ -52,7 +54,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "02. What are the four Resume Evidence Tiers?",
-    a: "Skills are graded by where and how they appear: STRONG (1.0x — in Experience/Projects with an action verb or metric), MODERATE (0.85x — in Experience/Projects without metrics), LISTED (0.60x — in the Skills section only), and MENTIONED (0.40x — in Summary or Header only).",
+    a: "Skills are graded by where and how they appear: STRONG (1.0x: in Experience/Projects with an action verb or metric), MODERATE (0.85x: in Experience/Projects without metrics), LISTED (0.60x: in the Skills section only), and MENTIONED (0.40x: in Summary or Header only).",
   },
   {
     q: "03. What do STRONG_MATCH, WEAK_EVIDENCE, PARTIAL_MATCH, and MISSING mean?",

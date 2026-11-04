@@ -130,7 +130,7 @@ export default function Profile() {
       setUploadResult(data);
       const gen = data.generated_profile || {};
       const defaultTitle = gen.full_name && gen.headline
-        ? `${gen.full_name} — ${gen.headline}`
+        ? `${gen.full_name} - ${gen.headline}`
         : (data.title || 'Extracted Candidate Profile');
       setNewProfileTitle(defaultTitle);
       await fetchSavedResumes();
@@ -532,7 +532,7 @@ export default function Profile() {
                     <div>
                       <span className="text-[10px] font-bold uppercase text-[#9D93B4] block">Extracted Name & Headline</span>
                       <span className="font-bold text-[#1E1B2E]">
-                        {genProfile.full_name || 'Candidate'} — <span className="text-purple-700">{genProfile.headline || 'Professional'}</span>
+                        {genProfile.full_name || 'Candidate'} - <span className="text-purple-700">{genProfile.headline || 'Professional'}</span>
                       </span>
                     </div>
                     <div>
@@ -652,7 +652,7 @@ export default function Profile() {
       <form onSubmit={handleSaveBasicInfo} className="bg-white p-6 sm:p-8 rounded-3xl border border-[#ECE5F6] shadow-saas space-y-4">
         <h3 className="font-heading font-bold text-base text-[#1E1B2E] flex items-center gap-2 mb-2">
           <User className="w-4 h-4 text-purple-600" />
-          Active Profile — Primary Career Information
+          Active Profile - Primary Career Information
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

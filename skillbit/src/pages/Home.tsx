@@ -419,7 +419,7 @@ function Features() {
           >
             <p className="mb-8 max-w-xl">
               Overall fit is broken into exact match, experience evidence and
-              semantic resonance — weighted 1.0 for required skills and 0.5 for
+              semantic resonance, weighted 1.0 for required skills and 0.5 for
               preferred.
             </p>
             <LiveGauge />
@@ -437,8 +437,8 @@ function Features() {
           </p>
           <div className="mt-6 space-y-3">
             {([
-              ["STRONG_MATCH", 'React — "Architected a dashboard…"'],
-              ["WEAK_EVIDENCE", "Kubernetes — listed only"],
+              ["STRONG_MATCH", 'React: "Architected a dashboard…"'],
+              ["WEAK_EVIDENCE", "Kubernetes: listed only"],
               ["PARTIAL_MATCH", "Terraform ← CloudFormation"],
               ["MISSING", "Apache Kafka"],
             ] as const).map(([st, ex]) => (
@@ -532,7 +532,7 @@ function Features() {
               Engineered a Redis caching layer, improving [metric] by [X]%.
             </div>
             <p className="text-fg/50">
-              Never invents companies, degrees or numbers — placeholders stay
+              Never invents companies, degrees or numbers; placeholders stay
               yours to fill.
             </p>
           </div>
@@ -615,7 +615,7 @@ function Normalizer() {
           </h2>
           <p className="mt-6 max-w-lg text-lg leading-relaxed text-fg/65">
             Boundary-safe matching resolves {aliasCount(BASE_TAXONOMY)}+ aliases
-            across 12 categories. Type anything below — the same engine powers
+            across 12 categories. Type anything below, and the same engine powers
             your resume analysis.
           </p>
         </div>
@@ -643,7 +643,7 @@ function Normalizer() {
                   <span className="truncate text-sm text-fg/60">{n.raw}</span>
                   <span className="flex items-center gap-2">
                     <span className="truncate font-grid text-sm font-medium">
-                      {n.canonical ?? "—"}
+                      {n.canonical ?? "N/A"}
                     </span>
                     <span
                       className={cx(
@@ -705,7 +705,7 @@ function About() {
           <p className="mt-6 text-lg leading-relaxed text-fg/65">
             SkillBit bridges candidate resumes and modern applicant tracking
             systems with deterministic heuristics, canonical skill normalization
-            and hybrid semantic matching — then hands you a clear learning path
+            and hybrid semantic matching, then hands you a clear learning path
             instead of a mystery score.
           </p>
           <div className="mt-10 grid gap-px bg-fg/10 sm:grid-cols-3">
@@ -713,7 +713,7 @@ function About() {
               {
                 i: Target,
                 t: "Job seekers",
-                d: "Know exactly why you match — or don’t.",
+                d: "Know exactly why you match, or don’t.",
               },
               {
                 i: Sparkles,

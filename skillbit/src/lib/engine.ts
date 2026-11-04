@@ -566,7 +566,7 @@ function buildInsights(
       : "Your resume does not yet show experience-backed proof for this role’s core stack.",
     missing.length
       ? `The biggest blockers for this ${job.seniority.toLowerCase()}-level role are ${list(missing)}, which are required but absent.`
-      : "No required skills are fully missing — the remaining work is about strengthening evidence.",
+      : "No required skills are fully missing, and the remaining work is about strengthening evidence.",
     weak.length
       ? `${list(weak)} ${
           weak.length === 1 ? "is" : "are"

@@ -242,6 +242,8 @@ def init_db(db: Session = None) -> None:
                 password="demo1234",
                 full_name="Maya Chen"
             )
+            from app.services.job_sources import seed_job_sources_and_verified_index
+            seed_job_sources_and_verified_index(db)
 
     except Exception as e:
         db.rollback()

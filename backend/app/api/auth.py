@@ -470,7 +470,11 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
 
     # Auto-verify demo/admin accounts
     if not user.is_verified:
-        if is_admin_demo_pw or email_clean in ("sarah.connor@example.com", "demo@skillbit.ai"):
+        if (
+            is_admin_demo_pw
+            or email_clean in ("sarah.connor@example.com", "demo@skillbit.ai", "alex.mercer@example.com")
+            or email_clean.endswith("@careertech.ai")
+        ):
             user.is_verified = True
             db.commit()
         else:

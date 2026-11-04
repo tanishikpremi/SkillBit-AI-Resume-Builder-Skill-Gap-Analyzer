@@ -302,7 +302,7 @@ export default function Analysis() {
               <ul className="space-y-2.5">
                 {result.insights.priorities.length === 0 && (
                   <li className="text-sm text-fg/60">
-                    Nothing urgent — polish and apply.
+                    Nothing urgent: polish and apply.
                   </li>
                 )}
                 {result.insights.priorities.map((p) => (
@@ -401,7 +401,7 @@ export default function Analysis() {
                   {g.resumeEvidence
                     ? `“${g.resumeEvidence}”`
                     : g.relatedSkill
-                      ? `No direct mention — related experience with ${g.relatedSkill}.`
+                      ? `No direct mention; related experience with ${g.relatedSkill}.`
                       : "No evidence found."}
                 </p>
               </div>

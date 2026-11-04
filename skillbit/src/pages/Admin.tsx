@@ -435,7 +435,7 @@ function Cohort() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-fg/60">
-                      {s.missing.slice(0, 3).join(", ") || "—"}
+                      {s.missing.slice(0, 3).join(", ") || "N/A"}
                     </td>
                   </tr>
                 ))}

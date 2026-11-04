@@ -13,6 +13,7 @@ from app.api.match import router as match_router
 from app.api.recommendation import router as recommendation_router
 from app.api.dashboard import router as dashboard_router
 from app.api.admin import router as admin_router
+from app.api.discovery import router as discovery_router
 
 
 
@@ -54,6 +55,7 @@ app.include_router(match_router, prefix=settings.API_V1_STR)
 app.include_router(recommendation_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
+app.include_router(discovery_router, prefix=settings.API_V1_STR)
 
 
 

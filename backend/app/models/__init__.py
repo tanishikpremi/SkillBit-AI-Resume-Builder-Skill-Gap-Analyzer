@@ -5,6 +5,17 @@ from app.models.skill import Skill, SkillAlias
 from app.models.resume import Resume
 from app.models.job import JobDescription, JobSkill
 from app.models.analysis import AnalysisHistory, SkillGap, Recommendation
+from app.models.discovery import (
+    JobSource,
+    JobListing,
+    JobSourceEvidence,
+    CandidateProfileSnapshot,
+    UserJobPreferences,
+    JobSearchRun,
+    JobRecommendation,
+    SavedJob,
+    JobApplication,
+)
 
 __all__ = [
     "Base",
@@ -22,4 +33,13 @@ __all__ = [
     "AnalysisHistory",
     "SkillGap",
     "Recommendation",
+    "JobSource",
+    "JobListing",
+    "JobSourceEvidence",
+    "CandidateProfileSnapshot",
+    "UserJobPreferences",
+    "JobSearchRun",
+    "JobRecommendation",
+    "SavedJob",
+    "JobApplication",
 ]

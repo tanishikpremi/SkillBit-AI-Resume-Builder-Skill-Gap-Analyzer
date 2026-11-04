@@ -207,7 +207,7 @@ function allUsers(): StoredUser[] {
 }
 
 export const emptyDraft = (name = "", email = ""): BuilderDraft => ({
-  title: name ? `${name} — Resume` : "Professional Resume",
+  title: name ? `${name} - Resume` : "Professional Resume",
   name,
   designation: "Senior Full-Stack Software Engineer",
   email,
@@ -291,7 +291,7 @@ export function structuredToText(s: Record<string, any>, fallbackTitle = ""): st
         .filter(Boolean)
         .join(" – ")
       lines.push(
-        [e.role_title || e.title, e.company || e.org].filter(Boolean).join(" — ") +
+        [e.role_title || e.title, e.company || e.org].filter(Boolean).join(" - ") +
           (period ? ` (${period})` : ""),
       )
       for (const b of e.bullets || []) {
@@ -311,7 +311,7 @@ export function structuredToText(s: Record<string, any>, fallbackTitle = ""): st
         ? p.technologies.join(", ")
         : p.technologies || p.org || ""
       lines.push(
-        [p.title, techs].filter(Boolean).join(" — ") +
+        [p.title, techs].filter(Boolean).join(" - ") +
           (p.date ? ` (${p.date})` : ""),
       )
       if (p.repo_url) lines.push(String(p.repo_url))
@@ -331,7 +331,7 @@ export function structuredToText(s: Record<string, any>, fallbackTitle = ""): st
       const deg = [ed.degree, ed.field_of_study].filter(Boolean).join(" in ")
       const period = [ed.start_date, ed.end_date].filter(Boolean).join(" – ")
       lines.push(
-        [deg || ed.title, ed.institution || ed.org].filter(Boolean).join(" — ") +
+        [deg || ed.title, ed.institution || ed.org].filter(Boolean).join(" - ") +
           (period ? ` (${period})` : ""),
       )
     }
@@ -613,7 +613,7 @@ export function builderDraftToStructured(
     .filter(Boolean)
 
   return {
-    title: d.title || `${d.name || "Candidate"} — Resume`,
+    title: d.title || `${d.name || "Candidate"} - Resume`,
     raw_text: rawText,
     ats_score: atsScore,
     full_name: d.name,
@@ -836,7 +836,7 @@ function seedData(user: User): UserData {
   const parsed = parseResume(SAMPLE_RESUME)
   const resume: ResumeDoc = {
     id: uid(),
-    title: "Maya Chen — Full-Stack 2025",
+    title: "Maya Chen - Full-Stack 2025",
     source: "uploaded",
     fileName: "maya-chen-resume.pdf",
     text: SAMPLE_RESUME,

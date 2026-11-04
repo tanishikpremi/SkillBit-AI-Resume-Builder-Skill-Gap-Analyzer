@@ -568,7 +568,7 @@ function buildA4Pages(d: BuilderDraft): {
       <div className="flex justify-between gap-4 text-[12.5px]">
         <span>
           <b>{e.title}</b>
-          {e.org && <span className="text-ink/65"> — {e.org}</span>}
+          {e.org && <span className="text-ink/65"> - {e.org}</span>}
           {e.location && <span className="text-ink/55"> · {e.location}</span>}
           {e.gpa && <span className="text-ink/65"> · GPA: {e.gpa}</span>}
         </span>
@@ -793,7 +793,7 @@ function buildA4Pages(d: BuilderDraft): {
             {filledCerts.map((c, ci) => (
               <li key={ci}>
                 <b>{c.name}</b>
-                {c.issuer ? ` — ${c.issuer}` : ""}
+                {c.issuer ? ` - ${c.issuer}` : ""}
                 {c.date ? ` (${c.date})` : ""}
               </li>
             ))}
@@ -1033,7 +1033,7 @@ export default function Builder() {
   }
 
   const saveAsResume = async (): Promise<string | null> => {
-    const resumeTitle = d.title || `${d.name || "Builder"} — Builder draft`
+    const resumeTitle = d.title || `${d.name || "Builder"} - Builder draft`
     const structured = builderDraftToStructured(
       d,
       text,
@@ -1215,7 +1215,7 @@ export default function Builder() {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>${d.name || "Resume"} — A4 Preview</title>
+  <title>${d.name || "Resume"} - A4 Preview</title>
   ${styles}
   <style>
     body { background: #11151c; color: #f4f1ea; margin: 0; padding: 32px 16px; }
@@ -2346,7 +2346,7 @@ export default function Builder() {
             </ul>
             {!repo.live && (
               <p className="mt-3 text-xs text-fg/45">
-                GitHub API unavailable — drafted from the repository name.
+                GitHub API unavailable; drafted from the repository name.
                 Review before importing.
               </p>
             )}

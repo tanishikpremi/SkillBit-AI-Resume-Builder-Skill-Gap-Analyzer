@@ -504,7 +504,7 @@ export default function ResumeBuilder() {
       if (p) {
         if (p.headline) {
           setDesignation(p.headline);
-          setTitle(`${fullName || 'Candidate'} — ${p.headline}`);
+          setTitle(`${fullName || 'Candidate'} - ${p.headline}`);
         }
         if (p.summary) setSummary(p.summary);
         if (p.phone) setPhone(p.phone);
@@ -1457,7 +1457,7 @@ export default function ResumeBuilder() {
                 <div key={expIdx} className="p-4 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-[#1E1B2E]">
-                      Position #{expIdx + 1} {exp.role_title && `— ${exp.role_title}`}
+                      Position #{expIdx + 1} {exp.role_title && `- ${exp.role_title}`}
                     </span>
                     <button
                       type="button"
@@ -1690,7 +1690,7 @@ export default function ResumeBuilder() {
                 <div key={projIdx} className="p-4 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-[#1E1B2E]">
-                      Project #{projIdx + 1} {proj.title && `— ${proj.title}`}
+                      Project #{projIdx + 1} {proj.title && `- ${proj.title}`}
                     </span>
                     <button
                       type="button"
@@ -2599,7 +2599,7 @@ export default function ResumeBuilder() {
                     cert.name && (
                       <li key={idx}>
                         <span className="font-bold text-slate-900">{renderRichText(cert.name)}</span>
-                        {cert.issuer && <span> — {cert.issuer}</span>}
+                        {cert.issuer && <span> - {cert.issuer}</span>}
                         {cert.date && <span className="text-slate-600"> ({cert.date})</span>}
                         {cert.url && (
                           <a href={formatUrl(cert.url)} target="_blank" rel="noreferrer" className="hover:underline font-semibold ml-1.5 text-[11px]" style={{ color: accentColor }}>

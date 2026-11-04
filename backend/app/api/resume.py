@@ -185,6 +185,11 @@ def upload_resume(
         db.add(resume)
         db.commit()
         db.refresh(resume)
+        try:
+            from app.ai.candidate_intelligence import build_candidate_profile_snapshot
+            build_candidate_profile_snapshot(user=current_user, db=db)
+        except Exception:
+            pass
         
         return ResumeUploadResponse(
             id=resume.id,
@@ -259,6 +264,11 @@ def create_builder_resume(
     db.add(resume)
     db.commit()
     db.refresh(resume)
+    try:
+        from app.ai.candidate_intelligence import build_candidate_profile_snapshot
+        build_candidate_profile_snapshot(user=current_user, db=db)
+    except Exception:
+        pass
     return resume
 
 @router.get("", response_model=List[ResumeResponse])

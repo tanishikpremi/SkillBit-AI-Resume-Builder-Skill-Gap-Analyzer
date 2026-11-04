@@ -13,6 +13,7 @@ import Builder from "../pages/Builder"
 import Profile from "../pages/Profile"
 import History from "../pages/History"
 import Admin from "../pages/Admin"
+import JobFinder from "../pages/JobFinder"
 import NotFound from "../pages/NotFound"
 
 export const router = createBrowserRouter([
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, Component: UserIndex },
               { path: "upload", Component: Upload },
+              { path: "jobs", Component: JobFinder },
               { path: "match", Component: NewMatch },
               { path: "match/:id", Component: Analysis },
               { path: "roadmaps", Component: Roadmaps },

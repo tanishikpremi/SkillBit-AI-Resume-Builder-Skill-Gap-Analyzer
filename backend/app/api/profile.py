@@ -77,6 +77,11 @@ def update_user_profile(
 
     db.commit()
     db.refresh(profile)
+    try:
+        from app.ai.candidate_intelligence import build_candidate_profile_snapshot
+        build_candidate_profile_snapshot(user=current_user, db=db)
+    except Exception:
+        pass
     return get_user_profile(current_user=current_user, db=db)
 
 @router.post("/sync-from-resume", response_model=ProfileResponse)
@@ -241,6 +246,11 @@ def sync_profile_from_resume(
 
     db.commit()
     db.refresh(profile)
+    try:
+        from app.ai.candidate_intelligence import build_candidate_profile_snapshot
+        build_candidate_profile_snapshot(user=current_user, db=db)
+    except Exception:
+        pass
     return get_user_profile(current_user=current_user, db=db)
 
 

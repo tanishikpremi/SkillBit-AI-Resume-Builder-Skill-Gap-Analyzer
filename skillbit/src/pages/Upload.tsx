@@ -222,7 +222,7 @@ export default function Upload() {
         const gen = res.generated_profile || {}
         setProfileTitleInput(
           gen.full_name && gen.headline
-            ? `${gen.full_name} — ${gen.headline}`
+            ? `${gen.full_name} - ${gen.headline}`
             : doc.title,
         )
         setScanning(false)
@@ -305,7 +305,7 @@ export default function Upload() {
         const gen = res.generated_profile || {}
         setProfileTitleInput(
           gen.full_name && gen.headline
-            ? `${gen.full_name} — ${gen.headline}`
+            ? `${gen.full_name} - ${gen.headline}`
             : doc.title,
         )
         refreshFromBackend()
@@ -523,7 +523,7 @@ export default function Upload() {
                 value={profileTitleInput}
                 onChange={(e) => setProfileTitleInput(e.target.value)}
                 className="field"
-                placeholder="e.g. Maya Chen — Full-Stack Profile"
+                placeholder="e.g. Maya Chen - Full-Stack Profile"
               />
             </div>
 
@@ -640,7 +640,7 @@ export default function Upload() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="field"
-                placeholder="e.g. Backend — Spring 2025"
+                placeholder="e.g. Backend - Spring 2025"
               />
             </div>
             <div>
@@ -652,7 +652,7 @@ export default function Upload() {
                     className="text-accent hover:underline"
                     onClick={() => {
                       setText(SAMPLE_RESUME)
-                      setTitle("Sample — Maya Chen")
+                      setTitle("Sample - Maya Chen")
                       setUploadedDoc(null)
                     }}
                   >
@@ -709,7 +709,7 @@ export default function Upload() {
               <Empty
                 icon={<FileText size={24} />}
                 title="Nothing parsed yet"
-                body="Drop a PDF, DOCX or TXT file or paste text on the left — the evidence report updates as you type. Click any saved resume below to inspect its full report in a popup window."
+                body="Drop a PDF, DOCX or TXT file or paste text on the left, and the evidence report updates as you type. Click any saved resume below to inspect its full report in a popup window."
               />
             )}
           </div>

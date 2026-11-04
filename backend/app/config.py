@@ -59,4 +59,16 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "SkillBit")
     SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
 
+    # Job Discovery & Multi-Source Search Settings
+    JSEARCH_API_KEY: str = os.getenv("JSEARCH_API_KEY", "")
+    SERPAPI_API_KEY: str = os.getenv("SERPAPI_API_KEY", "")
+    BRAVE_SEARCH_API_KEY: str = os.getenv("BRAVE_SEARCH_API_KEY", "")
+    ADZUNA_APP_ID: str = os.getenv("ADZUNA_APP_ID", "")
+    ADZUNA_APP_KEY: str = os.getenv("ADZUNA_APP_KEY", "")
+    FINDWORK_API_KEY: str = os.getenv("FINDWORK_API_KEY", "")
+    X_BEARER_TOKEN: str = os.getenv("X_BEARER_TOKEN", "")
+    JOB_SEARCH_TIMEOUT_SECONDS: float = float(os.getenv("JOB_SEARCH_TIMEOUT_SECONDS", "6.0"))
+    JOB_SEARCH_RATE_LIMIT_RPM: int = int(os.getenv("JOB_SEARCH_RATE_LIMIT_RPM", "30"))
+    ENABLE_LIVE_JOB_DISCOVERY: bool = os.getenv("ENABLE_LIVE_JOB_DISCOVERY", "true").lower() in ("true", "1", "yes")
+
 settings = Settings()

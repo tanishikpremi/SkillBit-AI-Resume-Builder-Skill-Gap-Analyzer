@@ -725,4 +725,313 @@ export const api = {
     }),
   adminDeleteSkill: (skill_id: string) =>
     request<void>(`/admin/skills/${skill_id}`, { method: "DELETE" }),
+
+  // AI Job Discovery & Recommendation Engine
+  getDiscoverySources: () =>
+    request<BackendJobSource[]>("/discovery/sources"),
+  getCandidateContext: () =>
+    request<BackendCandidateProfileSnapshot>("/discovery/candidate-context"),
+  rebuildCandidateContext: () =>
+    request<BackendCandidateProfileSnapshot>("/discovery/candidate-context/rebuild", {
+      method: "POST",
+    }),
+  getJobPreferences: () =>
+    request<BackendUserJobPreferences>("/discovery/preferences"),
+  updateJobPreferences: (payload: Partial<BackendUserJobPreferences>) =>
+    request<BackendUserJobPreferences>("/discovery/preferences", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  startJobDiscoverySearch: (payload?: {
+    custom_queries?: string[]
+    preferred_sources?: string[]
+    force_refresh_profile?: boolean
+    run_in_background?: boolean
+  }) =>
+    request<BackendJobSearchRun>("/discovery/search", {
+      method: "POST",
+      body: JSON.stringify(payload ?? {}),
+    }),
+  getJobSearchStatus: (searchRunId: string) =>
+    request<BackendJobSearchRun>(`/discovery/search/${searchRunId}`),
+  cancelJobSearch: (searchRunId: string) =>
+    request<BackendJobSearchRun>(`/discovery/search/${searchRunId}/cancel`, {
+      method: "POST",
+    }),
+  getJobSearchHistory: () =>
+    request<BackendJobSearchRun[]>("/discovery/search-history"),
+  getJobRecommendations: (params?: {
+    category_tab?: string
+    role?: string
+    skill?: string
+    location?: string
+    work_arrangement?: string
+    employment_type?: string
+    experience_level?: string
+    min_salary?: number
+    company?: string
+    industry?: string
+    source?: string
+    min_match_score?: number
+    application_status?: string
+    resume_id?: string
+    include_dismissed?: boolean
+  }) => {
+    const q = new URLSearchParams()
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null && String(v).trim() !== "") {
+          q.set(k, String(v))
+        }
+      }
+    }
+    const qs = q.toString()
+    return request<BackendJobRecommendation[]>(
+      `/discovery/recommendations${qs ? `?${qs}` : ""}`,
+    )
+  },
+  getJobRecommendationDetail: (jobId: string) =>
+    request<BackendJobRecommendation>(`/discovery/jobs/${jobId}`),
+  getJobExplanation: (jobId: string, refreshLlm = false) =>
+    request<BackendJobRecommendation>(
+      `/discovery/jobs/${jobId}/explanation?refresh_llm=${refreshLlm}`,
+    ),
+  verifyJobListing: (jobId: string, liveCheck = false) =>
+    request<BackendJobListing>(
+      `/discovery/jobs/${jobId}/verify?live_check=${liveCheck}`,
+      { method: "POST" },
+    ),
+  saveJob: (jobId: string, notes?: string) =>
+    request<BackendSavedJob>(`/discovery/jobs/${jobId}/save`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    }),
+  unsaveJob: (jobId: string) =>
+    request<void>(`/discovery/jobs/${jobId}/save`, {
+      method: "DELETE",
+    }),
+  getSavedJobs: () => request<BackendSavedJob[]>("/discovery/saved"),
+  dismissJobRecommendation: (jobId: string) =>
+    request<BackendJobRecommendation>(`/discovery/jobs/${jobId}/dismiss`, {
+      method: "POST",
+    }),
+  undismissJobRecommendation: (jobId: string) =>
+    request<BackendJobRecommendation>(`/discovery/jobs/${jobId}/undismiss`, {
+      method: "POST",
+    }),
+  applyToJob: (
+    jobId: string,
+    payload?: {
+      resume_id?: string
+      status?: string
+      applied_via_url?: string
+      notes?: string
+    },
+  ) =>
+    request<BackendJobApplication>(`/discovery/jobs/${jobId}/apply`, {
+      method: "POST",
+      body: JSON.stringify(payload ?? {}),
+    }),
+  getJobApplications: () =>
+    request<BackendJobApplication[]>("/discovery/applications"),
+}
+
+/* ------------------------------------------------------------------ */
+/* Job Discovery & Recommendation Types                                */
+/* ------------------------------------------------------------------ */
+
+export interface BackendJobSource {
+  id: string
+  slug: string
+  name: string
+  category: string
+  integration_mode: string
+  base_url?: string | null
+  requires_api_key: boolean
+  api_key_env_var?: string | null
+  api_key_configured: boolean
+  is_enabled: boolean
+  rate_limit_rpm: number
+  description?: string | null
+}
+
+export interface BackendJobSourceEvidence {
+  id?: string
+  source_slug: string
+  source_name: string
+  source_category: string
+  source_url: string
+  original_post_excerpt?: string | null
+  discovered_via_query?: string | null
+  verified_at?: string | null
+}
+
+export interface BackendJobListing {
+  id: string
+  canonical_fingerprint: string
+  title: string
+  company: string
+  company_website?: string | null
+  original_url: string
+  application_url: string
+  primary_source: string
+  source_category: string
+  original_post_excerpt?: string | null
+  description: string
+  required_skills: string[]
+  preferred_skills: string[]
+  education_requirements?: string | null
+  experience_requirements?: string | null
+  min_experience_years?: number | null
+  seniority_level: string
+  employment_type: string
+  is_internship: boolean
+  is_fresher_friendly: boolean
+  location?: string | null
+  work_arrangement: string
+  salary_text?: string | null
+  salary_min?: number | null
+  salary_max?: number | null
+  salary_currency?: string | null
+  industry?: string | null
+  is_startup: boolean
+  published_at?: string | null
+  application_deadline?: string | null
+  availability_status: string
+  last_verified_at?: string | null
+  discovered_at?: string | null
+  source_evidences: BackendJobSourceEvidence[]
+}
+
+export interface BackendResumeComparisonItem {
+  resume_id: string
+  resume_title: string
+  match_score: number
+  matched_required_skills: string[]
+  matched_preferred_skills: string[]
+  strong_evidence_count: number
+  reason: string
+}
+
+export interface BackendJobRecommendation {
+  id: string
+  user_id: string
+  job_listing_id: string
+  search_run_id?: string | null
+  match_score: number
+  score_breakdown: Record<string, number>
+  eligibility_status: string
+  eligibility_reasons: string[]
+  strong_matching_skills: string[]
+  partially_matching_skills: string[]
+  missing_skills: string[]
+  relevant_projects: string[]
+  education_compatibility?: string | null
+  experience_compatibility?: string | null
+  why_recommended: string
+  potential_concerns: string[]
+  preparation_steps: string[]
+  best_resume_id?: string | null
+  best_resume_title?: string | null
+  best_resume_reason?: string | null
+  resume_comparison: BackendResumeComparisonItem[]
+  category_tags: string[]
+  is_dismissed: boolean
+  is_saved: boolean
+  application_status?: string | null
+  applied_at?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  job: BackendJobListing
+}
+
+export interface BackendJobSearchRun {
+  id: string
+  user_id: string
+  status: string
+  current_stage: number
+  current_stage_label: string
+  progress_pct: number
+  generated_queries: string[]
+  sources_queried: {
+    source: string
+    slug?: string
+    status: string
+    jobs_found: number
+    message?: string
+  }[]
+  total_discovered: number
+  duplicates_consolidated: number
+  recommendations_created: number
+  cancel_requested: boolean
+  error_message?: string | null
+  started_at?: string | null
+  completed_at?: string | null
+}
+
+export interface BackendUserJobPreferences {
+  id: string
+  user_id: string
+  preferred_roles: string[]
+  alternative_roles: string[]
+  preferred_locations: string[]
+  remote_only: boolean
+  work_arrangements: string[]
+  employment_types: string[]
+  internship_preference: string
+  preferred_industries: string[]
+  min_match_score: number
+  salary_min?: number | null
+  salary_max?: number | null
+  salary_currency: string
+  excluded_companies: string[]
+  excluded_categories: string[]
+  preferred_sources: string[]
+  search_frequency: string
+  scoring_weights: Record<string, number>
+  consent_external_llm: boolean
+  override_inferred_roles: boolean
+  updated_at?: string | null
+}
+
+export interface BackendCandidateProfileSnapshot {
+  id: string
+  user_id: string
+  snapshot_version: number
+  unified_profile_json: Record<string, any>
+  resume_conflicts_json: {
+    type: string
+    entity: string
+    field: string
+    values: { source: string; value: string }[]
+    resolution: string
+  }[]
+  source_attribution_json: Record<string, string[]>
+  resume_count_analyzed: number
+  updated_at?: string | null
+}
+
+export interface BackendSavedJob {
+  id: string
+  user_id: string
+  job_listing_id: string
+  notes?: string | null
+  created_at?: string | null
+  job: BackendJobListing
+  match_score?: number | null
+}
+
+export interface BackendJobApplication {
+  id: string
+  user_id: string
+  job_listing_id: string
+  resume_id?: string | null
+  resume_title?: string | null
+  status: string
+  applied_via_url?: string | null
+  notes?: string | null
+  applied_at?: string | null
+  updated_at?: string | null
+  job: BackendJobListing
+  match_score?: number | null
 }

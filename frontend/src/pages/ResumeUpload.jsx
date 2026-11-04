@@ -61,7 +61,7 @@ export default function ResumeUpload() {
       setResult(data);
       const gen = data.generated_profile || {};
       const defaultProfileName = gen.full_name && gen.headline
-        ? `${gen.full_name} — ${gen.headline}`
+        ? `${gen.full_name} - ${gen.headline}`
         : (data.title || 'Candidate Profile');
       setProfileTitleInput(defaultProfileName);
     } catch (err) {
@@ -221,7 +221,7 @@ export default function ResumeUpload() {
                       type="text"
                       value={profileTitleInput}
                       onChange={(e) => setProfileTitleInput(e.target.value)}
-                      placeholder="e.g. Alex Mercer — Cloud Engineer Profile (Copy)"
+                      placeholder="e.g. Alex Mercer - Cloud Engineer Profile (Copy)"
                       className="w-full px-3.5 py-2 rounded-xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] focus:outline-none focus:border-purple-500"
                     />
                   </div>

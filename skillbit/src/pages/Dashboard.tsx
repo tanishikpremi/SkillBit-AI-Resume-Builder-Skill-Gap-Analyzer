@@ -189,13 +189,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi
           label="Latest fit score"
-          value={latest ? `${latest.result.overall}%` : "—"}
+          value={latest ? `${latest.result.overall}%` : "N/A"}
           sub={latest ? latest.result.insights.tier : "Run your first match"}
           accent
         />
         <Kpi
           label="ATS readiness"
-          value={resume ? `${resume.parsed.atsScore}` : "—"}
+          value={resume ? `${resume.parsed.atsScore}` : "N/A"}
           sub={
             resume
               ? `${Math.round(resume.parsed.quantifiedRatio * 100)}% quantified bullets`
@@ -226,7 +226,7 @@ export default function Dashboard() {
             body={
               resume
                 ? "Paste a job description to see your explainable fit score and skill gaps."
-                : "Start by uploading or pasting your resume — we’ll trace every skill to its evidence."
+                : "Start by uploading or pasting your resume, and we’ll trace every skill to its evidence."
             }
             action={
               <ButtonLink
@@ -326,7 +326,7 @@ export default function Dashboard() {
                 ))}
               {latest.result.gaps.every((g) => g.status === "STRONG_MATCH") && (
                 <li className="px-5 py-6 text-sm text-fg/60">
-                  No gaps — every requirement has strong evidence.
+                  No gaps: every requirement has strong evidence.
                 </li>
               )}
             </ul>

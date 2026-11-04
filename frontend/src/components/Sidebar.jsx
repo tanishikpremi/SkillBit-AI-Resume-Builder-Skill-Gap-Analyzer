@@ -26,6 +26,7 @@ export default function Sidebar() {
   const navItems = [
     { label: 'Upload Resume', path: '/upload', icon: Upload },
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'AI Job Finder', path: '/jobs', icon: Sparkles, badge: 'New', badgeColor: 'lime' },
     { label: 'Job Match', path: '/match', icon: Briefcase },
     { label: 'Skill Roadmaps', path: '/recommendations', icon: BookOpen },
     { label: 'Resume Builder', path: '/builder', icon: FileText },

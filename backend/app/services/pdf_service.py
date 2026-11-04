@@ -425,10 +425,10 @@ def build_ats_resume_pdf(resume_data: Dict[str, Any]) -> io.BytesIO:
                     title_line += f" | <i>{techs}</i>"
                 if proj.get("repo_url"):
                     repo_link = _sanitize_link(proj["repo_url"])
-                    title_line += f' &mdash; <a href="{repo_link}" color="{accent_hex}"><u>GitHub</u></a>'
+                    title_line += f' - <a href="{repo_link}" color="{accent_hex}"><u>GitHub</u></a>'
                 if proj.get("live_url"):
                     live_link = _sanitize_link(proj["live_url"])
-                    title_line += f' &mdash; <a href="{live_link}" color="{accent_hex}"><u>Live Demo</u></a>'
+                    title_line += f' - <a href="{live_link}" color="{accent_hex}"><u>Live Demo</u></a>'
 
                 if proj_date:
                     add_two_col_row(
@@ -547,7 +547,7 @@ def build_ats_resume_pdf(resume_data: Dict[str, Any]) -> io.BytesIO:
 
                 cert_line = f"&bull; <b>{c_name}</b>"
                 if c_issuer:
-                    cert_line += f" &mdash; {c_issuer}"
+                    cert_line += f" - {c_issuer}"
                 if c_date:
                     cert_line += f" ({c_date})"
                 if c_url:

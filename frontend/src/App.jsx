@@ -13,6 +13,7 @@ import JobAnalysis from './pages/JobAnalysis';
 import Profile from './pages/Profile';
 import Recommendations from './pages/Recommendations';
 import AdminTaxonomy from './pages/AdminTaxonomy';
+import JobFinder from './pages/JobFinder';
 
 function LayoutWrapper({ children }) {
   return (
@@ -23,7 +24,7 @@ function LayoutWrapper({ children }) {
           {children}
         </main>
         <footer className="border-t border-[#ECE5F6] bg-white/40 backdrop-blur-sm py-4 text-center text-xs text-[#706886] font-medium">
-          SkillBit — Resume Builder & Explainable Skill Gap Engine • Production Academic Prototype
+          SkillBit - Resume Builder & Explainable Skill Gap Engine • Production Academic Prototype
         </footer>
       </div>
     </div>
@@ -82,6 +83,16 @@ export default function App() {
               <ProtectedRoute>
                 <LayoutWrapper>
                   <ResumeBuilder />
+                </LayoutWrapper>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <ProtectedRoute>
+                <LayoutWrapper>
+                  <JobFinder />
                 </LayoutWrapper>
               </ProtectedRoute>
             }

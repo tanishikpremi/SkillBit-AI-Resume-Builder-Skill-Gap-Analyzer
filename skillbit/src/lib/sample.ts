@@ -5,21 +5,21 @@ SUMMARY
 Full-stack engineer with 4 years of experience building data-heavy web products with React, Node.js and AWS.
 
 EXPERIENCE
-Software Engineer — Lumen Analytics (2022 – Present)
+Software Engineer - Lumen Analytics (2022 - Present)
 - Architected a React and TypeScript dashboard used by 40k monthly analysts, cutting page load time by 38%.
 - Built Node.js REST APIs backed by PostgreSQL, serving 12M requests per day.
 - Worked on caching layer with Redis for the reporting service.
 - Containerized 6 services with Docker and deployed them to AWS ECS, reducing release time by 50%.
-Junior Developer — Brightline Studio (2020 – 2022)
+Junior Developer - Brightline Studio (2020 - 2022)
 - Developed GraphQL resolvers and Jest unit tests for a client portal.
 - Automated nightly data exports with Python scripts, saving 10 hours per week.
 
 PROJECTS
-OpenTrail — Python, FastAPI, GraphQL (2023)
+OpenTrail - Python, FastAPI, GraphQL (2023)
 - Engineered a GraphQL API with FastAPI for hiking route discovery, earning 1.2k GitHub stars.
 
 EDUCATION
-B.S. Computer Science — University of Washington (2016 – 2020)
+B.S. Computer Science - University of Washington (2016 - 2020)
 
 SKILLS
 TypeScript, JavaScript, React, Node.js, Python, FastAPI, GraphQL, PostgreSQL, Redis, Docker, AWS, Git, GitHub Actions, Kubernetes (basic)

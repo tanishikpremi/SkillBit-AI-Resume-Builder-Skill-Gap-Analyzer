@@ -275,7 +275,7 @@ export default function NewMatch() {
                 <div className="grid grid-cols-2 gap-px bg-fg/10">
                   {[
                     ["Title", jobTitleInput.trim() || job.title],
-                    ["Company", companyInput.trim() || job.company || "—"],
+                    ["Company", companyInput.trim() || job.company || "N/A"],
                     ["Seniority", job.seniority],
                     ["Skills", `${req.length} req · ${pref.length} pref`],
                   ].map(([k, v]) => (
