@@ -20,12 +20,16 @@ def seed_demo_candidate(db: Session, email: str = "sarah.connor@example.com", pa
             hashed_password=hash_password(password),
             full_name=full_name,
             role="user",
-            is_active=True
+            is_active=True,
+            is_verified=True
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         print(f"[SUCCESS] Seeded default candidate demo user: {email}")
+    elif not user.is_verified:
+        user.is_verified = True
+        db.commit()
 
     profile = db.query(Profile).filter(Profile.user_id == user.id).first()
     if not profile:
@@ -144,6 +148,21 @@ def init_db(db: Session = None) -> None:
                 if "picture" not in cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN picture VARCHAR(500)"))
                     conn.commit()
+                if "is_verified" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 1"))
+                    conn.commit()
+                if "verification_token" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)"))
+                    conn.commit()
+                if "verification_token_expires_at" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN verification_token_expires_at DATETIME"))
+                    conn.commit()
+                if "verification_otp" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN verification_otp VARCHAR(10)"))
+                    conn.commit()
+                if "last_verification_sent_at" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN last_verification_sent_at DATETIME"))
+                    conn.commit()
             if "analysis_history" in inspector.get_table_names():
                 cols = [c["name"] for c in inspector.get_columns("analysis_history")]
                 if "ai_insights" not in cols:
@@ -204,11 +223,15 @@ def init_db(db: Session = None) -> None:
                     hashed_password=hash_password("AdminPass123!"),
                     full_name="SkillBit Administrator" if "skillbit" in admin_email else "System Administrator",
                     role="admin",
-                    is_active=True
+                    is_active=True,
+                    is_verified=True
                 )
                 db.add(admin_user)
                 db.commit()
                 print(f"[SUCCESS] Seeded default administrator user: {admin_email}")
+            elif not admin_user.is_verified:
+                admin_user.is_verified = True
+                db.commit()
 
         # 4. Seed default demo candidate users on application startup
         if close_db_later:

@@ -11,6 +11,7 @@ class Token(BaseModel):
     full_name: str
     role: str
     picture: Optional[str] = None
+    is_verified: bool = True
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None
@@ -36,6 +37,16 @@ class PasswordChangeRequest(BaseModel):
     current_password: Optional[str] = None
     new_password: str
 
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,6 +55,7 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    is_verified: bool = False
     picture: Optional[str] = None
     created_at: datetime
-
+    message: Optional[str] = None

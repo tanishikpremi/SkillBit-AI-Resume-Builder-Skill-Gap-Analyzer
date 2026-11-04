@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -6,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.database.session import Base, get_db
 from app.database.init_db import init_db
+from app.models.user import User
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -170,6 +172,7 @@ def test_google_login_auto_provisioning(test_client):
     assert data["email"] == "google.user@example.com"
     assert data["full_name"] == "Google Test User"
     assert data["picture"] == "https://example.com/avatar.png"
+    assert data["is_verified"] is True
     token = data["access_token"]
 
     # 2. Verify protected profile access works immediately
@@ -178,3 +181,93 @@ def test_google_login_auto_provisioning(test_client):
     assert prof_resp.status_code == 200
     assert prof_resp.json()["user_id"] == data["user_id"]
 
+def test_email_verification_flow(test_client):
+    # 1. Register a new non-demo user
+    reg_payload = {
+        "email": "alex.novak@example.com",
+        "password": "SecurePassword123!",
+        "full_name": "Alex Novak"
+    }
+    reg_res = test_client.post("/api/auth/register", json=reg_payload)
+    assert reg_res.status_code == 201
+    reg_data = reg_res.json()
+    assert reg_data["is_verified"] is False
+    assert "Registration" in reg_data.get("message", "")
+
+    # 2. Attempt login before verification -> Should fail with 403 Forbidden
+    login_payload = {
+        "email": "alex.novak@example.com",
+        "password": "SecurePassword123!"
+    }
+    fail_login = test_client.post("/api/auth/login", json=login_payload)
+    assert fail_login.status_code == 403
+    assert "verify your email" in fail_login.json()["detail"].lower()
+
+    # 3. Retrieve user from db to get verification token
+    db_gen = test_client.app.dependency_overrides[get_db]()
+    db = next(db_gen)
+    user = db.query(User).filter(User.email == "alex.novak@example.com").first()
+    assert user is not None
+    assert user.verification_token is not None
+    token = user.verification_token
+    db.close()
+
+    # 4. Verify email using the token
+    verify_res = test_client.post("/api/auth/verify-email", json={"token": token})
+    assert verify_res.status_code == 200
+    token_data = verify_res.json()
+    assert "access_token" in token_data
+    assert token_data["is_verified"] is True
+    assert token_data["email"] == "alex.novak@example.com"
+
+    # 5. Now login succeeds
+    success_login = test_client.post("/api/auth/login", json=login_payload)
+    assert success_login.status_code == 200
+    assert "access_token" in success_login.json()
+
+def test_resend_verification_endpoint(test_client):
+    # 1. Register another user
+    reg_res = test_client.post("/api/auth/register", json={
+        "email": "jane.smith@example.com",
+        "password": "Password987!",
+        "full_name": "Jane Smith"
+    })
+    assert reg_res.status_code == 201
+
+    # Immediate resend triggers 60s rate limit (429)
+    resend_too_soon = test_client.post("/api/auth/resend-verification", json={
+        "email": "jane.smith@example.com"
+    })
+    assert resend_too_soon.status_code == 429
+
+    # Advance cooldown in DB
+    db_gen = test_client.app.dependency_overrides[get_db]()
+    db = next(db_gen)
+    user = db.query(User).filter(User.email == "jane.smith@example.com").first()
+    user.last_verification_sent_at = datetime.utcnow() - timedelta(seconds=70)
+    db.commit()
+    db.close()
+
+    # 2. Resend verification now succeeds
+    resend_res = test_client.post("/api/auth/resend-verification", json={
+        "email": "jane.smith@example.com"
+    })
+    assert resend_res.status_code == 200
+    assert "sent" in resend_res.json()["message"].lower()
+
+    # 3. Verify with the new OTP
+    db_gen = test_client.app.dependency_overrides[get_db]()
+    db = next(db_gen)
+    user = db.query(User).filter(User.email == "jane.smith@example.com").first()
+    otp_code = user.verification_otp
+    new_token = user.verification_token
+    db.close()
+
+    # Verify OTP endpoint
+    verify_otp_res = test_client.post("/api/auth/verify-otp", json={
+        "email": "jane.smith@example.com",
+        "otp": otp_code
+    })
+    assert verify_otp_res.status_code == 200
+    assert verify_otp_res.json()["email"] == "jane.smith@example.com"
+    assert verify_otp_res.json()["is_verified"] is True

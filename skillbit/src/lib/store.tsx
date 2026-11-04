@@ -934,7 +934,10 @@ function seedData(user: User): UserData {
 interface Ctx {
   user: User | null
   login: (email: string, password: string) => Promise<User>
-  signup: (name: string, email: string, password: string) => Promise<User>
+  signup: (name: string, email: string, password: string) => Promise<{ unverified: boolean; email: string; name: string }>
+  verifyEmail: (token: string) => Promise<User>
+  verifyOtp: (email: string, otp: string) => Promise<User>
+  resendVerification: (email: string) => Promise<{ status: string; message: string }>
   loginWithGoogle: (payload?: {
     credential?: string
     email?: string
@@ -1265,13 +1268,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (name: string, email: string, password: string) => {
       try {
         await api.register(name, email, password)
-        return await login(email, password)
+        return { unverified: true, email: email.trim(), name: name.trim() }
       } catch (apiErr) {
         const msg = (apiErr as Error)?.message || ""
         if (msg.toLowerCase().includes("already exists")) {
           throw new Error("An account with this email already exists.")
         }
-        // Fallback if backend is offline
+        throw apiErr
         if (
           allUsers().some(
             (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
@@ -1292,6 +1295,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     },
     [login, startSession],
+  )
+
+  const verifyEmail = useCallback(
+    async (token: string) => {
+      const res = await api.verifyEmail(token)
+      if (res.access_token) {
+        api.setToken(res.access_token)
+        const u: User = {
+          id: res.user_id,
+          name: res.full_name,
+          email: res.email,
+          role: res.role === "admin" ? "admin" : "user",
+          provider: "email",
+        }
+        write(SESSION_KEY, u)
+        setUser(u)
+        return u
+      }
+      throw new Error("Failed to verify email token.")
+    },
+    [],
+  )
+
+  const verifyOtp = useCallback(
+    async (email: string, otp: string) => {
+      const res = await api.verifyOtp(email, otp)
+      if (res.access_token) {
+        api.setToken(res.access_token)
+        const u: User = {
+          id: res.user_id,
+          name: res.full_name,
+          email: res.email,
+          role: res.role === "admin" ? "admin" : "user",
+          provider: "email",
+        }
+        write(SESSION_KEY, u)
+        setUser(u)
+        return u
+      }
+      throw new Error("Failed to verify OTP code.")
+    },
+    [],
+  )
+
+  const resendVerification = useCallback(
+    async (email: string) => {
+      return await api.resendVerification(email)
+    },
+    [],
   )
 
   const loginWithGoogle = useCallback(
@@ -1446,6 +1498,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       adminMetrics,
       refreshAdminMetrics,
       googleClientId,
+      verifyEmail,
+      verifyOtp,
+      resendVerification,
     }),
     [
       user,
@@ -1465,6 +1520,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       adminMetrics,
       refreshAdminMetrics,
       googleClientId,
+      verifyEmail,
+      verifyOtp,
+      resendVerification,
     ],
   )
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>

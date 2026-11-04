@@ -4,6 +4,7 @@ import AppShell from "../components/AppShell"
 import { RequireAdmin, RequireAuth, UserIndex } from "../components/Guards"
 import Home from "../pages/Home"
 import { Login, Signup } from "../pages/Auth"
+import VerifyEmail from "../pages/VerifyEmail"
 import Upload from "../pages/Upload"
 import NewMatch from "../pages/NewMatch"
 import Analysis from "../pages/Analysis"
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: "/", Component: Home },
       { path: "/login", Component: Login },
       { path: "/signup", Component: Signup },
+      { path: "/verify-email", Component: VerifyEmail },
       {
         path: "/app",
         Component: RequireAuth,

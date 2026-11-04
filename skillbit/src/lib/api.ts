@@ -455,6 +455,21 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getMe: () => request<BackendUserResponse>("/auth/me"),
+  verifyOtp: (email: string, otp: string) =>
+    request<BackendTokenResponse>("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() }),
+    }),
+  verifyEmail: (token: string) =>
+    request<BackendTokenResponse>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+  resendVerification: (email: string) =>
+    request<{ status: string; message: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    }),
   getSmtpStatus: () =>
     request<{ configured: boolean; status: string; message?: string }>(
       "/auth/smtp-status",

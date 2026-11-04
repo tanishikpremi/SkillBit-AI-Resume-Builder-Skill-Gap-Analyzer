@@ -1,15 +1,32 @@
 import uuid
+import secrets
+from datetime import datetime, timedelta, timezone
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.database.session import get_db
 from app.models.user import User
 from app.models.profile import Profile
-from app.schemas.auth import UserRegister, UserLogin, GoogleAuthRequest, PasswordChangeRequest, Token, UserResponse
+from app.schemas.auth import (
+    UserRegister,
+    UserLogin,
+    GoogleAuthRequest,
+    PasswordChangeRequest,
+    Token,
+    UserResponse,
+    VerifyEmailRequest,
+    VerifyOtpRequest,
+    ResendVerificationRequest
+)
 from app.utils.security import get_password_hash, verify_password, create_access_token
 from app.api.deps import get_current_active_user
-from app.services.email_service import send_welcome_email, test_smtp_connection, send_email_async
+from app.services.email_service import (
+    send_welcome_email,
+    send_verification_email,
+    test_smtp_connection,
+    send_email_async
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -46,7 +63,7 @@ async def send_test_email(to_email: str = None, current_user: User = Depends(get
 def google_login(payload: GoogleAuthRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Authenticate or auto-provision a user via Google OAuth (Google Identity Services).
-    Supports production Google ID Token verification as well as development/demo mode.
+    Google accounts are pre-verified by Google Identity Services, so is_verified is always True.
     """
     email = None
     full_name = None
@@ -104,21 +121,22 @@ def google_login(payload: GoogleAuthRequest, background_tasks: BackgroundTasks, 
     ).first()
 
     if user:
-        # Link Google ID and update picture if not set
         if not user.google_id and google_id:
             user.google_id = google_id
         if picture and not user.picture:
             user.picture = picture
+        if not user.is_verified:
+            user.is_verified = True
         db.commit()
         db.refresh(user)
     else:
-        # 2. Auto-provision user account (replaces manual signup)
         user = User(
             email=email.lower(),
             full_name=full_name,
             hashed_password=f"oauth_google_{uuid.uuid4()}",
             role="user",
             is_active=True,
+            is_verified=True,
             google_id=google_id,
             picture=picture
         )
@@ -126,7 +144,6 @@ def google_login(payload: GoogleAuthRequest, background_tasks: BackgroundTasks, 
         db.commit()
         db.refresh(user)
 
-        # 3. Create default profile
         profile = Profile(user_id=user.id)
         db.add(profile)
         db.commit()
@@ -150,44 +167,285 @@ def google_login(payload: GoogleAuthRequest, background_tasks: BackgroundTasks, 
         email=user.email,
         full_name=user.full_name,
         role=user.role,
-        picture=user.picture
+        picture=user.picture,
+        is_verified=True
     )
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    # 1. Check if email already registered
-    existing_user = db.query(User).filter(User.email == user_in.email.lower()).first()
-    if existing_user:
+def register(user_in: UserRegister, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """
+    Registers a new user and dispatches an email containing BOTH a 1-click link and a 6-digit OTP code.
+    Senior Enhancement: Ghost Account Recovery - if email exists but is UNVERIFIED, updates password & re-sends.
+    """
+    email_clean = user_in.email.strip().lower()
+    existing_user = db.query(User).filter(User.email == email_clean).first()
+
+    if existing_user and existing_user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email address already exists"
         )
-    
-    # 2. Create user
-    user = User(
-        email=user_in.email.lower(),
-        hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
-        role="user",
-        is_active=True
+
+    # Generate 32-byte secure URL token + 6-digit numeric OTP code
+    verification_token = secrets.token_urlsafe(32)
+    verification_otp = f"{secrets.randbelow(900000) + 100000}"  # 6-digit numeric OTP
+    token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    now_utc = datetime.now(timezone.utc)
+
+    if existing_user and not existing_user.is_verified:
+        # Ghost account recovery: update credentials and issue fresh codes
+        user = existing_user
+        user.hashed_password = get_password_hash(user_in.password)
+        user.full_name = user_in.full_name.strip()
+        user.verification_token = verification_token
+        user.verification_otp = verification_otp
+        user.verification_token_expires_at = token_expires_at
+        user.last_verification_sent_at = now_utc
+        db.commit()
+        db.refresh(user)
+    else:
+        # New account creation
+        user = User(
+            email=email_clean,
+            hashed_password=get_password_hash(user_in.password),
+            full_name=user_in.full_name.strip(),
+            role="user",
+            is_active=True,
+            is_verified=False,
+            verification_token=verification_token,
+            verification_otp=verification_otp,
+            verification_token_expires_at=token_expires_at,
+            last_verification_sent_at=now_utc
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        profile = Profile(user_id=user.id)
+        db.add(profile)
+        db.commit()
+
+    # Dispatch dual email in background (Link + OTP)
+    verification_link = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    background_tasks.add_task(
+        send_verification_email,
+        to_email=user.email,
+        full_name=user.full_name,
+        verification_link=verification_link,
+        otp_code=verification_otp
     )
-    db.add(user)
+
+    user.message = "Registration successful! A 6-digit verification code and activation link have been sent to your email."
+    return user
+
+@router.post("/verify-otp", response_model=Token)
+def verify_otp(payload: VerifyOtpRequest, db: Session = Depends(get_db)):
+    """
+    Validates the 6-digit OTP code, marks account verified, and returns JWT token for instant login.
+    """
+    email_clean = payload.email.strip().lower()
+    otp_clean = payload.otp.strip()
+
+    user = db.query(User).filter(User.email == email_clean).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account not found. Please register first."
+        )
+
+    if user.is_verified:
+        # Already verified: generate token and let them in immediately
+        access_token = create_access_token(
+            subject=user.id,
+            extra_claims={"email": user.email, "role": user.role, "full_name": user.full_name}
+        )
+        return Token(
+            access_token=access_token,
+            token_type="bearer",
+            user_id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            role=user.role,
+            picture=user.picture,
+            is_verified=True
+        )
+
+    if not user.verification_otp or user.verification_otp != otp_clean:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid 6-digit verification code. Please check your email or click Resend."
+        )
+
+    # Check expiration (15 minutes)
+    if user.verification_token_expires_at:
+        expires_at = user.verification_token_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification code has expired. Please click Resend to receive a new code."
+            )
+
+    # Mark user verified
+    user.is_verified = True
+    user.verification_otp = None
+    user.verification_token = None
+    user.verification_token_expires_at = None
     db.commit()
     db.refresh(user)
-    
-    # 3. Initialize empty user profile
-    profile = Profile(user_id=user.id)
-    db.add(profile)
+
+    access_token = create_access_token(
+        subject=user.id,
+        extra_claims={
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name
+        }
+    )
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        picture=user.picture,
+        is_verified=True
+    )
+
+@router.post("/verify-email", response_model=Token)
+@router.get("/verify-email", response_model=Token)
+def verify_email(
+    token: str = Query(None),
+    payload: VerifyEmailRequest = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Validates the verification link token, activates the account, and returns JWT token for instant login.
+    """
+    token_val = (payload.token if payload else None) or token
+    if not token_val:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification token is required"
+        )
+
+    user = db.query(User).filter(User.verification_token == token_val).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired email verification link."
+        )
+
+    # Check expiration
+    if user.verification_token_expires_at:
+        expires_at = user.verification_token_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        # We allow 24 hours for links
+        link_max_expiry = expires_at + timedelta(hours=24)
+        if link_max_expiry < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification link has expired. Please request a new verification email."
+            )
+
+    # Activate user
+    user.is_verified = True
+    user.verification_token = None
+    user.verification_otp = None
+    user.verification_token_expires_at = None
     db.commit()
-    
-    return user
+    db.refresh(user)
+
+    access_token = create_access_token(
+        subject=user.id,
+        extra_claims={
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name
+        }
+    )
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        picture=user.picture,
+        is_verified=True
+    )
+
+@router.post("/resend-verification")
+def resend_verification(
+    payload: ResendVerificationRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Resends a verification email with 60-second cooldown rate-limiting.
+    """
+    email_clean = payload.email.strip().lower()
+    user = db.query(User).filter(User.email == email_clean).first()
+
+    if not user:
+        return {
+            "status": "ok",
+            "message": f"If an unverified account exists for {email_clean}, a code has been dispatched."
+        }
+
+    if user.is_verified:
+        return {
+            "status": "already_verified",
+            "message": "This email address is already verified. You can log in directly."
+        }
+
+    # Senior Protection: Enforce 60-second cooldown between resends
+    if user.last_verification_sent_at:
+        sent_at = user.last_verification_sent_at
+        if sent_at.tzinfo is None:
+            sent_at = sent_at.replace(tzinfo=timezone.utc)
+        elapsed = (datetime.now(timezone.utc) - sent_at).total_seconds()
+        if elapsed < 60:
+            remaining = int(60 - elapsed)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {remaining} seconds before requesting another code."
+            )
+
+    # Generate fresh token + 6-digit OTP
+    verification_token = secrets.token_urlsafe(32)
+    verification_otp = f"{secrets.randbelow(900000) + 100000}"
+    user.verification_token = verification_token
+    user.verification_otp = verification_otp
+    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    user.last_verification_sent_at = datetime.now(timezone.utc)
+    db.commit()
+
+    verification_link = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    background_tasks.add_task(
+        send_verification_email,
+        to_email=user.email,
+        full_name=user.full_name,
+        verification_link=verification_link,
+        otp_code=verification_otp
+    )
+
+    return {
+        "status": "ok",
+        "message": f"A new 6-digit code and link have been sent to {user.email}."
+    }
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
     email_clean = login_data.email.strip().lower()
     user = db.query(User).filter(User.email == email_clean).first()
 
-    # Auto-provision default demo candidate account if not yet seeded in DB
+    # Auto-provision default demo candidate accounts
     if not user and email_clean == "sarah.connor@example.com" and login_data.password == "Resistance2026!":
         from app.database.init_db import seed_demo_candidate
         user = seed_demo_candidate(db, email=email_clean, password=login_data.password, full_name="Sarah Connor")
@@ -210,6 +468,17 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Account is deactivated")
 
+    # Auto-verify demo/admin accounts
+    if not user.is_verified:
+        if is_admin_demo_pw or email_clean in ("sarah.connor@example.com", "demo@skillbit.ai"):
+            user.is_verified = True
+            db.commit()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email address before logging in. Check your inbox for your 6-digit code or activation link."
+            )
+
     access_token = create_access_token(
         subject=user.id,
         extra_claims={"email": user.email, "role": user.role, "full_name": user.full_name}
@@ -221,7 +490,8 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
         email=user.email,
         full_name=user.full_name,
         role=user.role,
-        picture=user.picture
+        picture=user.picture,
+        is_verified=user.is_verified
     )
 
 @router.get("/me", response_model=UserResponse)
@@ -239,7 +509,6 @@ def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password must be at least 8 characters long."
         )
-    # Verify current_password if provided and account is not an OAuth-only placeholder
     is_oauth_placeholder = bool(
         current_user.hashed_password
         and current_user.hashed_password.startswith("oauth_google_")
@@ -264,4 +533,3 @@ def change_password(
     current_user.hashed_password = get_password_hash(payload.new_password)
     db.commit()
     return {"status": "ok", "message": "Password updated successfully."}
-

@@ -16,11 +16,15 @@ class User(Base):
     full_name = Column(String(255), nullable=False)
     role = Column(String(50), default="user")  # 'user', 'admin', 'mentor'
     is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    verification_token = Column(String(255), unique=True, index=True, nullable=True)
+    verification_otp = Column(String(10), index=True, nullable=True)
+    verification_token_expires_at = Column(DateTime, nullable=True)
+    last_verification_sent_at = Column(DateTime, nullable=True)
     google_id = Column(String(255), unique=True, index=True, nullable=True)
     picture = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
-
 
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")

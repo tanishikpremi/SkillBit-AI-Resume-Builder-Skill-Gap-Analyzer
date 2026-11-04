@@ -598,7 +598,9 @@ Interactive Swagger UI documentation is served automatically at **`http://localh
 | **System** | `GET` | `/` | Public | Service metadata, version, and docs link |
 | **System** | `GET` | `/health` | Public | Liveness health check (`{"status": "ok"}`) |
 | **Auth** | `GET` | `/api/auth/config` | Public | Public Google OAuth Client ID configuration |
-| **Auth** | `POST` | `/api/auth/register` | Public | Register candidate account & initialize empty `Profile` |
+| **Auth** | `POST` | `/api/auth/register` | Public | Register candidate account, issue verification token & send mail |
+| **Auth** | `POST` | `/api/auth/verify-email` | Public | Verify candidate email with 1-click token & auto-authenticate |
+| **Auth** | `POST` | `/api/auth/resend-verification` | Public | Resend time-limited verification email link |
 | **Auth** | `POST` | `/api/auth/login` | Public | Authenticate email/password & issue HS256 JWT token |
 | **Auth** | `POST` | `/api/auth/google` | Public | Verify Google OAuth ID token, auto-provision user & issue JWT |
 | **Auth** | `GET` | `/api/auth/me` | User | Retrieve currently authenticated user details |

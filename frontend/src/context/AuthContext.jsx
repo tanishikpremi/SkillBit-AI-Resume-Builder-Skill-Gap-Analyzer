@@ -62,12 +62,46 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, full_name) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = full_name.trim();
-    await api.post('/auth/register', {
+    const res = await api.post('/auth/register', {
       email: cleanEmail,
       password,
       full_name: cleanName,
     });
-    return await login(cleanEmail, password);
+    return res.data;
+  };
+
+  const verifyOtp = async (email, otp) => {
+    const res = await api.post('/auth/verify-otp', {
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
+    });
+    const { access_token, user_id, email: userEmail, full_name, role, picture } = res.data;
+    if (access_token) {
+      localStorage.setItem('token', access_token);
+      const userData = { id: user_id, email: userEmail, full_name, role, picture };
+      localStorage.setItem('user', JSON.stringify(userData));
+      setToken(access_token);
+      setUser(userData);
+    }
+    return res.data;
+  };
+
+  const verifyEmail = async (verificationToken) => {
+    const res = await api.post('/auth/verify-email', { token: verificationToken });
+    const { access_token, user_id, email: userEmail, full_name, role, picture } = res.data;
+    if (access_token) {
+      localStorage.setItem('token', access_token);
+      const userData = { id: user_id, email: userEmail, full_name, role, picture };
+      localStorage.setItem('user', JSON.stringify(userData));
+      setToken(access_token);
+      setUser(userData);
+    }
+    return res.data;
+  };
+
+  const resendVerification = async (email) => {
+    const res = await api.post('/auth/resend-verification', { email: email.trim().toLowerCase() });
+    return res.data;
   };
 
   const loginWithGoogle = async ({ credential, email, full_name, picture } = {}) => {
@@ -89,7 +123,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, googleClientId, login, register, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      loading,
+      googleClientId,
+      login,
+      register,
+      verifyEmail,
+      verifyOtp,
+      resendVerification,
+      loginWithGoogle,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

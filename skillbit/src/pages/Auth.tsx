@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useState, type FormEvent, type ReactNode } from "react"
 import { Link, Navigate, useLocation, useNavigate } from "react-router"
 import {
   ArrowLeft,
@@ -6,6 +6,9 @@ import {
   EyeOff,
   LoaderCircle,
   TriangleAlert,
+  Mail,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react"
 import {
   Bracketed,
@@ -189,12 +192,24 @@ function useAfterAuth() {
 }
 
 export function Login() {
-  const { user, login, loginWithGoogle } = useApp()
+  const { user, login, loginWithGoogle, resendVerification, verifyOtp } = useApp()
   const after = useAfterAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
+  const [loginOtp, setLoginOtp] = useState("")
+  const [otpBusy, setOtpBusy] = useState(false)
+  const [resendBusy, setResendBusy] = useState(false)
+  const [resendMsg, setResendMsg] = useState("")
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
   if (user && !busy) return <Navigate to="/app" replace />
 
   const run = async (fn: () => Promise<{ role: string }>) => {
@@ -208,10 +223,31 @@ export function Login() {
       setBusy(false)
     }
   }
+
   const submit = (e: FormEvent) => {
     e.preventDefault()
     run(() => login(email, password))
   }
+
+  const submitLoginOtp = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!loginOtp.trim() || loginOtp.trim().length !== 6) {
+      setErr("Please enter the complete 6-digit verification code.")
+      return
+    }
+    setErr("")
+    setOtpBusy(true)
+    try {
+      const u = await verifyOtp(email, loginOtp.trim())
+      after(u.role)
+    } catch (e) {
+      setErr((e as Error).message || "Verification code failed.")
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
+  const isUnverifiedError = err.toLowerCase().includes("verify your email")
 
   return (
     <AuthLayout
@@ -253,7 +289,73 @@ export function Login() {
             autoComplete="current-password"
           />
         </div>
-        {err && <ErrorNote msg={err} />}
+
+        {err && (
+          <div className="space-y-3">
+            <ErrorNote msg={err} />
+            {isUnverifiedError && email && (
+              <div className="border border-accent/40 bg-accent/[0.04] p-3.5 space-y-3">
+                <div className="font-grid text-xs font-bold text-accent uppercase tracking-wider text-center">
+                  Verify With 6-Digit Code
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={loginOtp}
+                    onChange={(e) => setLoginOtp(e.target.value.replace(/\D/g, ""))}
+                    placeholder="123456"
+                    className="field text-center font-mono font-bold tracking-[0.3em] text-lg flex-1 py-1.5"
+                  />
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={otpBusy || loginOtp.length !== 6}
+                    onClick={submitLoginOtp}
+                  >
+                    {otpBusy ? <LoaderCircle size={16} className="animate-spin" /> : "Verify"}
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  disabled={resendBusy || cooldown > 0}
+                  onClick={async () => {
+                    setResendBusy(true)
+                    setResendMsg("")
+                    try {
+                      const res = await resendVerification(email)
+                      setResendMsg(res.message || `Fresh code dispatched to ${email}`)
+                      setCooldown(60)
+                    } catch (e) {
+                      setResendMsg((e as Error).message || "Failed to resend.")
+                    } finally {
+                      setResendBusy(false)
+                    }
+                  }}
+                >
+                  <RefreshCw size={13} className={resendBusy ? "animate-spin" : ""} />
+                  <span>
+                    {cooldown > 0
+                      ? `Resend available in (${cooldown}s)`
+                      : resendBusy
+                        ? "Dispatching..."
+                        : `Resend code to ${email}`}
+                  </span>
+                </Button>
+                {resendMsg && (
+                  <div className="border border-fg/20 bg-fg/[0.04] p-2 text-center text-xs text-fg">
+                    {resendMsg}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <Button
           type="submit"
           variant="primary"
@@ -302,13 +404,27 @@ export function Login() {
 }
 
 export function Signup() {
-  const { user, signup, loginWithGoogle } = useApp()
+  const { user, signup, loginWithGoogle, resendVerification, verifyOtp } = useApp()
   const after = useAfterAuth()
   const [f, setF] = useState({ name: "", email: "", password: "", confirm: "" })
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
-  if (user && !busy) return <Navigate to="/app" replace />
+  const [registeredEmail, setRegisteredEmail] = useState("")
+  const [signupOtp, setSignupOtp] = useState("")
+  const [otpBusy, setOtpBusy] = useState(false)
+  const [otpErr, setOtpErr] = useState("")
+  const [resendBusy, setResendBusy] = useState(false)
+  const [resendMsg, setResendMsg] = useState("")
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  if (user && !busy && !registeredEmail) return <Navigate to="/app" replace />
 
   const strength = [
     f.password.length >= 8,
@@ -327,6 +443,7 @@ export function Signup() {
       setBusy(false)
     }
   }
+
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (f.name.trim().length < 2) return setErr("Please enter your full name.")
@@ -334,7 +451,157 @@ export function Signup() {
       return setErr("Password must be at least 8 characters.")
     if (f.password !== f.confirm) return setErr("Passwords do not match.")
     if (!agree) return setErr("Please accept the terms to continue.")
-    run(() => signup(f.name, f.email, f.password))
+
+    setErr("")
+    setBusy(true)
+    signup(f.name, f.email, f.password)
+      .then(() => {
+        setRegisteredEmail(f.email.trim())
+        setCooldown(60) // Start 60s cooldown
+      })
+      .catch((e) => {
+        setErr((e as Error).message)
+      })
+      .finally(() => {
+        setBusy(false)
+      })
+  }
+
+  const handleVerifyOtp = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!signupOtp.trim() || signupOtp.trim().length !== 6) {
+      setOtpErr("Please enter the complete 6-digit code.")
+      return
+    }
+    setOtpErr("")
+    setOtpBusy(true)
+    try {
+      const u = await verifyOtp(registeredEmail, signupOtp.trim())
+      after(u.role)
+    } catch (e) {
+      setOtpErr((e as Error).message || "Verification code failed.")
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (cooldown > 0 || resendBusy) return
+    setResendBusy(true)
+    setResendMsg("")
+    setOtpErr("")
+    try {
+      const res = await resendVerification(registeredEmail)
+      setResendMsg(res.message || `Fresh code dispatched to ${registeredEmail}`)
+      setCooldown(60)
+    } catch (e) {
+      setResendMsg((e as Error).message || "Failed to resend.")
+    } finally {
+      setResendBusy(false)
+    }
+  }
+
+  if (registeredEmail) {
+    return (
+      <AuthLayout
+        title="Check your email"
+        sub="We sent a 6-digit code & link to verify your account."
+      >
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-accent/15 text-accent">
+              <Mail size={30} />
+            </div>
+            <div className="font-grid text-xl font-bold">Check Your Email</div>
+            <p className="mt-1 text-sm text-fg/70">
+              We dispatched a 6-digit code and activation link to:
+            </p>
+            <div className="mt-2 inline-block border border-fg/20 bg-fg/[0.04] px-3 py-1 font-mono text-sm font-semibold text-accent">
+              {registeredEmail}
+            </div>
+          </div>
+
+          {/* Form to enter 6-digit code */}
+          <form onSubmit={handleVerifyOtp} className="space-y-3">
+            <Label htmlFor="otp-input" className="block text-center text-xs uppercase tracking-wider text-fg/60">
+              Enter 6-Digit Verification Code
+            </Label>
+            <input
+              id="otp-input"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={signupOtp}
+              onChange={(e) => setSignupOtp(e.target.value.replace(/\D/g, ""))}
+              placeholder="123456"
+              className="field text-center font-mono text-2xl font-bold tracking-[0.4em] py-2.5 uppercase"
+              autoFocus
+            />
+            {otpErr && <ErrorNote msg={otpErr} />}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={otpBusy || signupOtp.length !== 6}
+            >
+              {otpBusy ? (
+                <LoaderCircle size={20} className="animate-spin" />
+              ) : (
+                "Verify Code & Enter SkillBit"
+              )}
+            </Button>
+          </form>
+
+          <div className="relative my-3">
+            <div className="flex items-center gap-3 font-grid text-[11px] uppercase tracking-[0.2em] text-fg/40">
+              <span className="h-px flex-1 bg-fg/15" />
+              or click email link
+              <span className="h-px flex-1 bg-fg/15" />
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-fg/50 leading-relaxed">
+            You can also click the 1-click activation link directly in the email on your phone or PC.
+          </p>
+
+          {resendMsg && (
+            <div className="border border-fg/20 bg-fg/[0.04] p-2.5 text-center text-xs text-fg">
+              {resendMsg}
+            </div>
+          )}
+
+          <div className="space-y-3 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-xs"
+              disabled={resendBusy || cooldown > 0}
+              onClick={handleResend}
+            >
+              <RefreshCw size={14} className={resendBusy ? "animate-spin" : ""} />
+              <span>
+                {cooldown > 0
+                  ? `Resend available in (${cooldown}s)`
+                  : resendBusy
+                    ? "Dispatching..."
+                    : "Resend Code & Link"}
+              </span>
+            </Button>
+
+            <div className="text-center">
+              <Link
+                to="/login"
+                className="font-grid text-xs text-accent underline-offset-4 hover:underline"
+              >
+                Return to Log in
+              </Link>
+            </div>
+          </div>
+        </div>
+      </AuthLayout>
+    )
   }
 
   return (

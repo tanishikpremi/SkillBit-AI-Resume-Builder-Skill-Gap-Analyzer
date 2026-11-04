@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Sparkles, ArrowRight, Lock, Mail, AlertCircle, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight, Lock, Mail, AlertCircle, ChevronDown, ChevronUp, ShieldCheck, RefreshCw } from 'lucide-react';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import logoImg from '../assets/logo.png';
 
@@ -11,13 +11,26 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
+  const [cooldown, setCooldown] = useState(0);
   
-  const { login } = useAuth();
+  const { login, verifyOtp, resendVerification } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((prev) => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const formatAuthError = (err, fallback) => {
     const detail = err.response?.data?.detail;
     if (typeof detail === 'string') return detail;
+    if (typeof detail === 'object' && detail?.message) return detail.message;
     if (Array.isArray(detail) && detail.length > 0) {
       return detail.map((d) => d.msg || 'Invalid input').join(', ');
     }
@@ -30,19 +43,57 @@ export default function Login() {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsUnverified(false);
+    setResendMsg('');
     setLoading(true);
     try {
       await login(email, password);
       navigate('/upload');
     } catch (err) {
-      setError(formatAuthError(err, 'Invalid email or password. Please try again.'));
+      const errMsg = formatAuthError(err, 'Invalid email or password. Please try again.');
+      setError(errMsg);
+      if (err.response?.status === 403 || errMsg.toLowerCase().includes('verify your email')) {
+        setIsUnverified(true);
+        if (cooldown === 0) setCooldown(60);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleVerifyOtp = async () => {
+    if (!email || otp.trim().length !== 6) return;
+    setError('');
+    setOtpLoading(true);
+    try {
+      await verifyOtp(email, otp.trim());
+      navigate('/upload');
+    } catch (err) {
+      setError(formatAuthError(err, 'Verification failed. Please check the code.'));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email || cooldown > 0) return;
+    setResendLoading(true);
+    setResendMsg('');
+    try {
+      const res = await resendVerification(email);
+      setResendMsg(res.message || `Verification code & link resent to ${email}`);
+      setCooldown(60);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setResendMsg(typeof detail === 'string' ? detail : 'Failed to resend verification.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   const handleDemoLogin = async (demoEmail, demoPass) => {
     setError('');
+    setIsUnverified(false);
     setLoading(true);
     try {
       await login(demoEmail, demoPass);
@@ -73,9 +124,53 @@ export default function Login() {
         {/* Card */}
         <div className="bg-white p-7 sm:p-9 rounded-3xl border border-[#ECE5F6] shadow-saas">
           {error && (
-            <div className="mb-5 flex items-center gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-              <span className="font-medium">{error}</span>
+            <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span className="font-medium">{error}</span>
+              </div>
+              {isUnverified && (
+                <div className="mt-3 pt-3 border-t border-rose-200/60 space-y-2.5">
+                  <p className="text-[11px] text-rose-800">
+                    Enter the 6-digit verification code sent to <strong>{email}</strong>:
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="6-digit code"
+                      className="w-36 text-center tracking-widest font-mono text-sm font-bold py-1.5 px-2 rounded-xl bg-white border border-rose-300 text-rose-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={otpLoading || otp.length !== 6}
+                      className="flex-1 py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                    >
+                      {otpLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                      <span>Verify & Continue</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 text-[11px]">
+                    <span className="text-gray-500">Didn't receive code?</span>
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resendLoading || cooldown > 0}
+                      className="text-purple-700 font-bold hover:underline disabled:opacity-50"
+                    >
+                      {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Code'}
+                    </button>
+                  </div>
+                  {resendMsg && (
+                    <p className="text-center text-[11px] text-purple-800 font-semibold">
+                      {resendMsg}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
