@@ -18,6 +18,18 @@ class JobDescriptionCreate(BaseModel):
     company: Optional[str] = None
     raw_text: str
 
+class JobExtractUrlRequest(BaseModel):
+    url: str
+
+class JobExtractedDetailsResponse(BaseModel):
+    title: str
+    company: Optional[str] = None
+    raw_text: str
+    seniority_level: Optional[str] = None
+    source_type: str = "file"
+    source_label: Optional[str] = None
+    skills_detected_count: int = 0
+
 class JobDescriptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -117,3 +117,25 @@ def test_job_api_endpoints(test_client):
     list_res = client.get("/api/job", headers=headers)
     assert list_res.status_code == 200
     assert len(list_res.json()) >= 1
+
+    # Extract JD from uploaded .txt file
+    file_res = client.post(
+        "/api/job/extract-file",
+        headers=headers,
+        files={"file": ("senior_backend_jd.txt", SAMPLE_JOB_TEXT.encode("utf-8"), "text/plain")},
+    )
+    assert file_res.status_code == 200
+    extracted = file_res.json()
+    assert extracted["title"] == "Senior Backend Engineer"
+    assert extracted["company"] == "CloudScale AI"
+    assert "Python" in extracted["raw_text"]
+    assert extracted["skills_detected_count"] >= 5
+
+    # Extract JD from URL (SSRF blocked check + mocked JSON-LD HTML check)
+    ssrf_res = client.post(
+        "/api/job/extract-url",
+        headers=headers,
+        json={"url": "http://127.0.0.1:8000/internal"},
+    )
+    assert ssrf_res.status_code == 400
+

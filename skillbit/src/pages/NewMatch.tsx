@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState, type DragEvent } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import {
   Briefcase,
+  Check,
+  FileText,
   FileUp,
+  Link2,
   LoaderCircle,
   Target,
   Trash2,
@@ -27,12 +30,18 @@ export default function NewMatch() {
   const { data, update, taxonomy, refreshFromBackend } = useUserData()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  const jdFileRef = useRef<HTMLInputElement>(null)
   const [resumeId, setResumeId] = useState(
     params.get("resume") ?? data.resumes[0]?.id ?? "",
   )
   const [jobTitleInput, setJobTitleInput] = useState("")
   const [companyInput, setCompanyInput] = useState("")
   const [jd, setJd] = useState("")
+  const [jdUrlInput, setJdUrlInput] = useState("")
+  const [extractingUrl, setExtractingUrl] = useState(false)
+  const [extractingFile, setExtractingFile] = useState(false)
+  const [jdDrag, setJdDrag] = useState(false)
+  const [extractNote, setExtractNote] = useState("")
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState("")
 
@@ -40,6 +49,79 @@ export default function NewMatch() {
     () => (jd.trim().length > 40 ? parseJob(jd, taxonomy) : null),
     [jd, taxonomy],
   )
+
+  const handleExtractFromUrl = async () => {
+    const cleanUrl = jdUrlInput.trim()
+    if (!cleanUrl) return
+    setExtractingUrl(true)
+    setErr("")
+    setExtractNote("")
+    try {
+      const res = await api.extractJobFromUrl(cleanUrl)
+      setJd(res.raw_text || "")
+      if (res.title) setJobTitleInput(res.title)
+      if (res.company) setCompanyInput(res.company)
+      setExtractNote(
+        `Extracted JD from link (${res.skills_detected_count} skill(s) detected).`,
+      )
+    } catch (e) {
+      setErr(
+        (e as Error).message ||
+          "Could not extract job description from that link. Try uploading as PDF/TXT or pasting text.",
+      )
+    } finally {
+      setExtractingUrl(false)
+    }
+  }
+
+  const handleExtractFromFile = async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+    setExtractingFile(true)
+    setErr("")
+    setExtractNote("")
+    try {
+      if (getToken()) {
+        const res = await api.extractJobFromFile(file)
+        setJd(res.raw_text || "")
+        if (res.title) setJobTitleInput(res.title)
+        if (res.company) setCompanyInput(res.company)
+        setExtractNote(
+          `Parsed JD from ${file.name} (${res.skills_detected_count} skill(s) detected).`,
+        )
+        return
+      }
+      if (ext === "txt" || ext === "md") {
+        const text = await file.text()
+        setJd(text)
+        const parsed = parseJob(text, taxonomy)
+        if (parsed.title) setJobTitleInput(parsed.title)
+        if (parsed.company) setCompanyInput(parsed.company)
+        setExtractNote(`Loaded JD from ${file.name}.`)
+      } else {
+        setErr("Log in with the backend server running to parse PDF/DOCX job description files.")
+      }
+    } catch (e) {
+      if (ext === "txt" || ext === "md") {
+        const text = await file.text()
+        setJd(text)
+        const parsed = parseJob(text, taxonomy)
+        if (parsed.title) setJobTitleInput(parsed.title)
+        if (parsed.company) setCompanyInput(parsed.company)
+        setExtractNote(`Loaded JD from ${file.name}.`)
+      } else {
+        setErr((e as Error).message || "Failed to parse job description file.")
+      }
+    } finally {
+      setExtractingFile(false)
+    }
+  }
+
+  const onJdDrop = (e: DragEvent) => {
+    e.preventDefault()
+    setJdDrag(false)
+    const f = e.dataTransfer.files?.[0]
+    if (f) handleExtractFromFile(f)
+  }
 
   if (!data.resumes.length) {
     return (
@@ -182,6 +264,107 @@ export default function NewMatch() {
                 ))}
               </select>
             </div>
+
+            {/* Auto-Import JD via Link or PDF/TXT/DOCX File */}
+            <div className="space-y-3 border border-fg/15 bg-fg/[0.02] p-4">
+              <div className="font-grid text-[11px] uppercase tracking-[0.16em] text-accent">
+                Import Job Description via Link or File (PDF, TXT, DOCX)
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative flex-1">
+                  <Link2
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg/45"
+                  />
+                  <input
+                    type="url"
+                    value={jdUrlInput}
+                    onChange={(e) => setJdUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        handleExtractFromUrl()
+                      }
+                    }}
+                    placeholder="Paste job posting URL (Greenhouse, Lever, career page, PDF link)…"
+                    className="field py-2 pl-9 text-xs"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={!jdUrlInput.trim() || extractingUrl}
+                  onClick={handleExtractFromUrl}
+                >
+                  {extractingUrl ? (
+                    <>
+                      <LoaderCircle size={14} className="animate-spin" />{" "}
+                      Fetching…
+                    </>
+                  ) : (
+                    "Fetch & Parse URL"
+                  )}
+                </Button>
+              </div>
+
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setJdDrag(true)
+                }}
+                onDragLeave={() => setJdDrag(false)}
+                onDrop={onJdDrop}
+                onClick={() => jdFileRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && jdFileRef.current?.click()
+                }
+                className={cx(
+                  "flex cursor-pointer items-center justify-between gap-3 border border-dashed px-4 py-3 text-xs transition-colors",
+                  jdDrag
+                    ? "border-accent bg-accent/10"
+                    : "border-fg/20 hover:border-accent/60 hover:bg-fg/[0.03]",
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText size={16} className="shrink-0 text-accent" />
+                  <div>
+                    <span className="font-grid font-medium text-fg">
+                      {extractingFile
+                        ? "Parsing job description file…"
+                        : "Upload or drop JD file (.pdf, .txt, .docx)"}
+                    </span>
+                    <span className="ml-2 text-fg/50">
+                      Auto-fills title, company & requirements below
+                    </span>
+                  </div>
+                </div>
+                <span className="border border-fg/20 px-2.5 py-1 font-grid text-[10px] uppercase tracking-[0.14em] text-fg/75">
+                  Browse file
+                </span>
+                <input
+                  ref={jdFileRef}
+                  type="file"
+                  accept=".pdf,.txt,.docx,.doc"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleExtractFromFile(f)
+                    e.target.value = ""
+                  }}
+                />
+              </div>
+
+              {extractNote && (
+                <div className="flex items-center gap-2 border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-fg">
+                  <Check size={14} className="shrink-0 text-accent" />
+                  <span>{extractNote}</span>
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="m-title" hint="Optional override">

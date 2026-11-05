@@ -656,6 +656,35 @@ export const api = {
     }),
 
   // Job
+  extractJobFromFile: (file: File) => {
+    const fd = new FormData()
+    fd.append("file", file)
+    return request<{
+      title: string
+      company?: string | null
+      raw_text: string
+      seniority_level?: string | null
+      source_type: string
+      source_label?: string | null
+      skills_detected_count: number
+    }>("/job/extract-file", {
+      method: "POST",
+      body: fd,
+    })
+  },
+  extractJobFromUrl: (url: string) =>
+    request<{
+      title: string
+      company?: string | null
+      raw_text: string
+      seniority_level?: string | null
+      source_type: string
+      source_label?: string | null
+      skills_detected_count: number
+    }>("/job/extract-url", {
+      method: "POST",
+      body: JSON.stringify({ url: url.trim() }),
+    }),
   analyzeJob: (payload: { title: string; company?: string; raw_text: string }) =>
     request<BackendJobDescription>("/job/analyze", {
       method: "POST",

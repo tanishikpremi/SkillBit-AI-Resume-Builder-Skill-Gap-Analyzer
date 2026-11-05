@@ -49,6 +49,53 @@ Preferred Qualifications:
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [error, setError] = useState('');
   const [refreshingInsights, setRefreshingInsights] = useState(false);
+  const [jdUrlInput, setJdUrlInput] = useState('');
+  const [extractingJd, setExtractingJd] = useState(false);
+  const [extractNote, setExtractNote] = useState('');
+
+  const handleExtractFromUrl = async () => {
+    if (!jdUrlInput.trim()) return;
+    setExtractingJd(true);
+    setError('');
+    setExtractNote('');
+    try {
+      const res = await api.post('/job/extract-url', { url: jdUrlInput.trim() });
+      const d = res.data;
+      if (d.raw_text) setRawText(d.raw_text);
+      if (d.title) setJobTitle(d.title);
+      if (d.company) setCompany(d.company);
+      setExtractNote(`Extracted JD from link (${d.skills_detected_count || 0} skill(s) detected).`);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to fetch JD from link.');
+    } finally {
+      setExtractingJd(false);
+    }
+  };
+
+  const handleExtractFromFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExtractingJd(true);
+    setError('');
+    setExtractNote('');
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await api.post('/job/extract-file', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const d = res.data;
+      if (d.raw_text) setRawText(d.raw_text);
+      if (d.title) setJobTitle(d.title);
+      if (d.company) setCompany(d.company);
+      setExtractNote(`Parsed JD from ${file.name} (${d.skills_detected_count || 0} skill(s) detected).`);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to parse JD file.');
+    } finally {
+      setExtractingJd(false);
+      e.target.value = '';
+    }
+  };
 
   const handleRefreshInsights = async () => {
     if (!analysisResult?.id) return;
@@ -199,6 +246,47 @@ Preferred Qualifications:
               className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] text-xs text-[#1E1B2E] placeholder:text-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition-colors"
             />
           </div>
+        </div>
+
+        {/* Auto-Import JD via Link or PDF/TXT/DOCX File */}
+        <div className="p-4 rounded-2xl bg-[#FAF8FD] border border-[#ECE5F6] space-y-3">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 block">
+            Import Job Description via Link or File (.pdf, .txt, .docx)
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={jdUrlInput}
+                onChange={e => setJdUrlInput(e.target.value)}
+                placeholder="Paste job posting URL..."
+                className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-[#ECE5F6] text-xs text-[#1E1B2E]"
+              />
+              <button
+                type="button"
+                disabled={!jdUrlInput.trim() || extractingJd}
+                onClick={handleExtractFromUrl}
+                className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold disabled:opacity-50"
+              >
+                {extractingJd ? 'Parsing...' : 'Fetch URL'}
+              </button>
+            </div>
+            <div>
+              <label className="flex items-center justify-between px-4 py-2 rounded-xl bg-white border border-dashed border-purple-300 text-xs text-[#332D47] cursor-pointer hover:bg-purple-50 transition-colors">
+                <span className="font-semibold">Upload JD File (.pdf, .txt, .docx)</span>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-purple-100 text-purple-800">Browse</span>
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.docx,.doc"
+                  className="hidden"
+                  onChange={handleExtractFromFile}
+                />
+              </label>
+            </div>
+          </div>
+          {extractNote && (
+            <p className="text-xs text-emerald-700 font-semibold">{extractNote}</p>
+          )}
         </div>
 
         <div>
