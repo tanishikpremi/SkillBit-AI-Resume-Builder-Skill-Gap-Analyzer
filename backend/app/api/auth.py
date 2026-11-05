@@ -13,6 +13,7 @@ from app.schemas.auth import (
     UserLogin,
     GoogleAuthRequest,
     PasswordChangeRequest,
+    ProfilePictureUpdateRequest,
     Token,
     UserResponse,
     VerifyEmailRequest,
@@ -540,3 +541,23 @@ def change_password(
     current_user.hashed_password = get_password_hash(payload.new_password)
     db.commit()
     return {"status": "ok", "message": "Password updated successfully."}
+
+
+@router.put("/picture", response_model=UserResponse)
+@router.post("/picture", response_model=UserResponse)
+def update_profile_picture(
+    payload: ProfilePictureUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Updates or clears the authenticated user's profile picture (URL or base64 data URI)."""
+    clean_pic = (payload.picture or "").strip()
+    if clean_pic and len(clean_pic) > 2_000_000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile picture payload is too large (max 2MB)."
+        )
+    current_user.picture = clean_pic if clean_pic else None
+    db.commit()
+    db.refresh(current_user)
+    return current_user

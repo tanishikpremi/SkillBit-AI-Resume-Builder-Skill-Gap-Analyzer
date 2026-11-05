@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy import Column, String, Text, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from app.database.session import Base
 
@@ -22,7 +22,7 @@ class User(Base):
     verification_token_expires_at = Column(DateTime, nullable=True)
     last_verification_sent_at = Column(DateTime, nullable=True)
     google_id = Column(String(255), unique=True, index=True, nullable=True)
-    picture = Column(String(500), nullable=True)
+    picture = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 

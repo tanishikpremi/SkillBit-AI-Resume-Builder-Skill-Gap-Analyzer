@@ -486,6 +486,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ current_password, new_password }),
     }),
+  updateProfilePicture: (picture: string | null) =>
+    request<BackendUserResponse>("/auth/picture", {
+      method: "PUT",
+      body: JSON.stringify({ picture }),
+    }),
 
   // Profile
   getProfile: () => request<BackendProfileResponse>("/profile"),

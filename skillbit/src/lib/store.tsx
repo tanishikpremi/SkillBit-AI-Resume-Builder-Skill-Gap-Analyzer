@@ -962,6 +962,7 @@ interface Ctx {
   adminMetrics: BackendAdminMetrics | null
   refreshAdminMetrics: () => Promise<void>
   googleClientId: string
+  updateUserPicture: (picture: string | null) => Promise<void>
 }
 
 const AppCtx = createContext<Ctx | null>(null)
@@ -1481,6 +1482,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return merged
   }, [adminMetrics])
 
+  const updateUserPicture = useCallback(
+    async (picture: string | null) => {
+      const cleanPic = picture && picture.trim() ? picture.trim() : undefined
+      if (getToken()) {
+        try {
+          await api.updateProfilePicture(cleanPic ?? null)
+        } catch (err) {
+          console.warn("Could not persist picture on backend, saving locally:", err)
+        }
+      }
+      setUser((prev) => {
+        if (!prev) return prev
+        const next: User = { ...prev, picture: cleanPic }
+        write(SESSION_KEY, next)
+        return next
+      })
+    },
+    [],
+  )
+
   const value = useMemo(
     () => ({
       user,
@@ -1503,6 +1524,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verifyEmail,
       verifyOtp,
       resendVerification,
+      updateUserPicture,
     }),
     [
       user,
@@ -1525,6 +1547,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verifyEmail,
       verifyOtp,
       resendVerification,
+      updateUserPicture,
     ],
   )
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>

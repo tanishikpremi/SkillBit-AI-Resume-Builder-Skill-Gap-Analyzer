@@ -37,6 +37,9 @@ class PasswordChangeRequest(BaseModel):
     current_password: Optional[str] = None
     new_password: str
 
+class ProfilePictureUpdateRequest(BaseModel):
+    picture: Optional[str] = None
+
 class VerifyEmailRequest(BaseModel):
     token: str
 

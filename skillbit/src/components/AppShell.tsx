@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router"
 import {
+  Camera,
   Check,
   ChevronDown,
   CircleHelp,
@@ -253,13 +254,21 @@ function UserCard({
       )}
 
       <div className="flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center bg-accent font-grid text-canvas font-semibold">
-          {user.name
-            .split(" ")
-            .map((p) => p[0])
-            .slice(0, 2)
-            .join("")}
-        </span>
+        {user.picture ? (
+          <img
+            src={user.picture}
+            alt={user.name}
+            className="size-10 shrink-0 border border-accent/40 object-cover"
+          />
+        ) : (
+          <span className="grid size-10 shrink-0 place-items-center bg-accent font-grid text-canvas font-semibold">
+            {user.name
+              .split(" ")
+              .map((p) => p[0])
+              .slice(0, 2)
+              .join("")}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{user.name}</div>
           <div className="truncate text-xs text-fg/50">{user.email}</div>
@@ -293,10 +302,16 @@ function UserCard({
 export default function AppShell() {
   const [open, setOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
-  const { user, data, update, logout } = useApp()
+  const { user, data, update, logout, updateUserPicture } = useApp()
   const { theme, toggle } = useTheme()
   const navigate = useNavigate()
   const loc = useLocation()
+  const avatarFileRef = useRef<HTMLInputElement>(null)
+
+  // Profile Picture states (in Settings modal)
+  const [picUrlInput, setPicUrlInput] = useState("")
+  const [picBusy, setPicBusy] = useState(false)
+  const [picNote, setPicNote] = useState("")
 
   // Password Reset states (in Settings modal)
   const [currentPw, setCurrentPw] = useState("")
@@ -319,6 +334,69 @@ export default function AppShell() {
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
   useEffect(() => setOpen(false), [loc.pathname])
+
+  const handleAvatarFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      setPicNote("Please select a valid image file (.png, .jpg, .webp, .gif).")
+      return
+    }
+    setPicBusy(true)
+    setPicNote("")
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = async () => {
+        const canvas = document.createElement("canvas")
+        const size = 256
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          const minDim = Math.min(img.width, img.height)
+          const sx = (img.width - minDim) / 2
+          const sy = (img.height - minDim) / 2
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.86)
+          await updateUserPicture(dataUrl)
+          setPicNote("Profile picture updated.")
+        }
+        setPicBusy(false)
+      }
+      img.onerror = () => {
+        setPicBusy(false)
+        setPicNote("Could not load that image file.")
+      }
+      img.src = String(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSavePicUrl = async () => {
+    if (!picUrlInput.trim()) return
+    setPicBusy(true)
+    setPicNote("")
+    try {
+      await updateUserPicture(picUrlInput.trim())
+      setPicUrlInput("")
+      setPicNote("Profile picture updated from URL.")
+    } finally {
+      setPicBusy(false)
+    }
+  }
+
+  const handleRemovePic = async () => {
+    setPicBusy(true)
+    setPicNote("")
+    try {
+      await updateUserPicture(null)
+      setPicNote("Profile picture removed.")
+    } finally {
+      setPicBusy(false)
+    }
+  }
 
   const handlePasswordReset = async (e: FormEvent) => {
     e.preventDefault()
@@ -441,9 +519,89 @@ export default function AppShell() {
         <div className="space-y-5">
           <div className="border border-fg/12 bg-fg/[0.02] p-4">
             <div className="font-grid text-[11px] uppercase tracking-[0.18em] text-accent">
-              Account identity
+              Account identity & profile picture
             </div>
-            <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+
+            <div className="mt-3 flex flex-col gap-4 border-b border-fg/10 pb-4 sm:flex-row sm:items-center">
+              <div className="relative shrink-0">
+                {user?.picture ? (
+                  <img
+                    src={user.picture}
+                    alt={user.name}
+                    className="size-16 border border-accent/50 object-cover"
+                  />
+                ) : (
+                  <span className="grid size-16 place-items-center bg-accent font-grid text-xl font-semibold text-canvas">
+                    {user?.name
+                      .split(" ")
+                      .map((p) => p[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="primary"
+                    disabled={picBusy}
+                    onClick={() => avatarFileRef.current?.click()}
+                  >
+                    <Camera size={14} />{" "}
+                    {picBusy ? "Saving…" : "Upload photo"}
+                  </Button>
+                  {user?.picture && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={picBusy}
+                      onClick={handleRemovePic}
+                    >
+                      <Trash2 size={14} /> Remove photo
+                    </Button>
+                  )}
+                  <input
+                    ref={avatarFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleAvatarFileChange}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={picUrlInput}
+                    onChange={(e) => setPicUrlInput(e.target.value)}
+                    placeholder="Or paste image URL (https://…)"
+                    className="field py-1.5 text-xs"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={!picUrlInput.trim() || picBusy}
+                    onClick={handleSavePicUrl}
+                  >
+                    Use URL
+                  </Button>
+                </div>
+
+                {picNote && (
+                  <div className="flex items-center gap-1.5 text-xs text-accent">
+                    <Check size={13} />
+                    <span>{picNote}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
               <div>
                 <span className="text-fg/50">Name: </span>
                 <span className="font-medium">{user?.name}</span>
