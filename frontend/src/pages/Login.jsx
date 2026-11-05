@@ -267,30 +267,6 @@ export default function Login() {
             )}
           </div>
 
-          {/* Quick One-Click Demo Logins */}
-          <div className="mt-6 pt-5 border-t border-[#ECE5F6]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#9D93B4] block mb-2.5 text-center">
-              Quick One-Click Test Accounts
-            </span>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin@skillbit.ai', 'AdminPass123!')}
-                className="py-2 px-3 rounded-xl bg-[#FAF8FD] hover:bg-purple-50 text-[#332D47] border border-[#ECE5F6] text-center hover:border-purple-300 transition-all flex items-center justify-center gap-1.5 font-medium shadow-xs"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('sarah.connor@example.com', 'Resistance2026!')}
-                className="py-2 px-3 rounded-xl bg-[#FAF8FD] hover:bg-purple-50 text-[#332D47] border border-[#ECE5F6] text-center hover:border-purple-300 transition-all font-medium shadow-xs"
-              >
-                Candidate
-              </button>
-            </div>
-          </div>
-
           <p className="mt-6 text-center text-xs text-[#706886]">
             Don't have an account?{' '}
             <Link to="/register" className="text-purple-600 font-bold hover:underline">

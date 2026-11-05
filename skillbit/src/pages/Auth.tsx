@@ -370,35 +370,6 @@ export function Login() {
           )}
         </Button>
       </form>
-
-      <Bracketed size={6} className="mt-8 p-[3px]">
-        <div className="border border-fg/12 bg-fg/[0.03] p-4">
-          <div className="font-grid text-[11px] uppercase tracking-[0.2em] text-fg/50">
-            Demo accounts
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {[
-              ["Candidate", "demo@skillbit.ai", "demo1234"],
-              ["Placement admin", "admin@skillbit.ai", "admin1234"],
-            ].map(([label, em, pw]) => (
-              <button
-                key={em}
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setEmail(em)
-                  setPassword(pw)
-                  run(() => login(em, pw))
-                }}
-                className="border border-fg/15 px-3 py-2.5 text-left transition-colors hover:border-accent hover:bg-accent/10"
-              >
-                <div className="font-grid text-sm font-medium">{label}</div>
-                <div className="text-xs text-fg/50">{em}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </Bracketed>
     </AuthLayout>
   )
 }
