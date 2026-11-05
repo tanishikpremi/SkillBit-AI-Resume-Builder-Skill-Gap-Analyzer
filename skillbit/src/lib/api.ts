@@ -428,6 +428,8 @@ export interface BackendAdminMetrics {
 /* ------------------------------------------------------------------ */
 
 export const api = {
+  getToken,
+  setToken,
   // Auth
   getAuthConfig: () => request<{ google_client_id: string }>("/auth/config"),
   login: (email: string, password: string) =>

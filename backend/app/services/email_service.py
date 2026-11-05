@@ -3,24 +3,31 @@ import asyncio
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import parseaddr, formataddr
 from typing import Optional, Dict, Any, Tuple
-from app.config import settings
+from app.config import Settings, settings
 
 logger = logging.getLogger("email_service")
 
 def get_clean_smtp_credentials() -> Tuple[str, int, str, str, str, str, bool]:
     """
     Sanitize and return SMTP credentials defensively:
-    Strips Google App Password spaces (e.g. 'abcd efgh ijkl mnop' -> 'abcdefghijklmnop').
+    Reloads Settings() from .env if updated at runtime, strips Google App Password spaces,
+    and safely parses 'Name <email@domain.com>' in SMTP_FROM_EMAIL.
     """
-    host = (settings.SMTP_HOST or "smtp.gmail.com").strip()
-    port = int(settings.SMTP_PORT or 587)
-    user = (settings.SMTP_USER or "").strip()
-    # Remove any internal spaces or surrounding whitespace from Google App Passwords
-    password = (settings.SMTP_PASSWORD or "").replace(" ", "").strip()
-    from_email = (settings.SMTP_FROM_EMAIL or user).strip()
-    from_name = (settings.SMTP_FROM_NAME or "SkillBit").strip()
-    use_tls = bool(settings.SMTP_USE_TLS)
+    live = Settings()
+    host = (live.SMTP_HOST or settings.SMTP_HOST or "smtp.gmail.com").strip().strip('"').strip("'")
+    port = int(live.SMTP_PORT or settings.SMTP_PORT or 587)
+    user = (live.SMTP_USER or settings.SMTP_USER or "").strip().strip('"').strip("'")
+    # Remove any internal spaces or surrounding whitespace/quotes from Google App Passwords
+    raw_pw = (live.SMTP_PASSWORD or settings.SMTP_PASSWORD or "").strip().strip('"').strip("'")
+    password = raw_pw.replace(" ", "")
+
+    raw_from = (live.SMTP_FROM_EMAIL or settings.SMTP_FROM_EMAIL or user).strip().strip('"').strip("'")
+    parsed_name, parsed_addr = parseaddr(raw_from)
+    from_email = (parsed_addr or user).strip()
+    from_name = (live.SMTP_FROM_NAME or settings.SMTP_FROM_NAME or parsed_name or "SkillBit").strip().strip('"').strip("'")
+    use_tls = bool(live.SMTP_USE_TLS)
     return host, port, user, password, from_email, from_name, use_tls
 
 def is_smtp_configured() -> bool:
@@ -99,9 +106,10 @@ def send_email_sync(
     _, _, user, _, from_email, from_name, _ = get_clean_smtp_credentials()
 
     try:
+        envelope_sender = from_email or user
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{from_name} <{from_email or user}>"
+        msg["From"] = formataddr((from_name, envelope_sender))
         msg["To"] = to_email
 
         if text_content:
@@ -110,7 +118,7 @@ def send_email_sync(
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
         server = create_smtp_connection()
-        server.sendmail(from_email or user, [to_email], msg.as_string())
+        server.sendmail(envelope_sender, [to_email], msg.as_string())
         server.quit()
         logger.info(f"Successfully dispatched email to {to_email}")
         return True

@@ -2,7 +2,7 @@ import uuid
 import secrets
 from datetime import datetime, timedelta, timezone
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.database.session import get_db
@@ -172,7 +172,7 @@ def google_login(payload: GoogleAuthRequest, background_tasks: BackgroundTasks, 
     )
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_in: UserRegister, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def register(user_in: UserRegister, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Registers a new user and dispatches an email containing BOTH a 1-click link and a 6-digit OTP code.
     Senior Enhancement: Ghost Account Recovery - if email exists but is UNVERIFIED, updates password & re-sends.
@@ -226,7 +226,8 @@ def register(user_in: UserRegister, background_tasks: BackgroundTasks, db: Sessi
         db.commit()
 
     # Dispatch dual email in background (Link + OTP)
-    verification_link = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    origin_url = (request.headers.get("origin") or settings.FRONTEND_URL or "http://localhost:5174").rstrip("/")
+    verification_link = f"{origin_url}/verify-email?token={verification_token}"
     background_tasks.add_task(
         send_verification_email,
         to_email=user.email,
@@ -383,6 +384,7 @@ def verify_email(
 @router.post("/resend-verification")
 def resend_verification(
     payload: ResendVerificationRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
@@ -426,7 +428,8 @@ def resend_verification(
     user.last_verification_sent_at = datetime.now(timezone.utc)
     db.commit()
 
-    verification_link = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    origin_url = (request.headers.get("origin") or settings.FRONTEND_URL or "http://localhost:5174").rstrip("/")
+    verification_link = f"{origin_url}/verify-email?token={verification_token}"
     background_tasks.add_task(
         send_verification_email,
         to_email=user.email,

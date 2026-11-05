@@ -1301,42 +1301,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (token: string) => {
       const res = await api.verifyEmail(token)
       if (res.access_token) {
-        api.setToken(res.access_token)
-        const u: User = {
+        setToken(res.access_token)
+        const backendUser: StoredUser = {
           id: res.user_id,
-          name: res.full_name,
+          name: res.full_name || res.email.split("@")[0],
           email: res.email,
+          password: "",
           role: res.role === "admin" ? "admin" : "user",
           provider: "email",
+          picture: res.picture,
+          createdAt: Date.now(),
         }
-        write(SESSION_KEY, u)
-        setUser(u)
-        return u
+        return await startSession(backendUser)
       }
       throw new Error("Failed to verify email token.")
     },
-    [],
+    [startSession],
   )
 
   const verifyOtp = useCallback(
     async (email: string, otp: string) => {
       const res = await api.verifyOtp(email, otp)
       if (res.access_token) {
-        api.setToken(res.access_token)
-        const u: User = {
+        setToken(res.access_token)
+        const backendUser: StoredUser = {
           id: res.user_id,
-          name: res.full_name,
+          name: res.full_name || res.email.split("@")[0],
           email: res.email,
+          password: "",
           role: res.role === "admin" ? "admin" : "user",
           provider: "email",
+          picture: res.picture,
+          createdAt: Date.now(),
         }
-        write(SESSION_KEY, u)
-        setUser(u)
-        return u
+        return await startSession(backendUser)
       }
       throw new Error("Failed to verify OTP code.")
     },
-    [],
+    [startSession],
   )
 
   const resendVerification = useCallback(
