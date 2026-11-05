@@ -15,12 +15,14 @@ from app.schemas.job import (
     JobSkillResponse,
     JobExtractUrlRequest,
     JobExtractedDetailsResponse,
+    JobJsonLdExtractResponse,
 )
 from app.api.deps import get_current_active_user
 from app.ai.job_analyzer import analyze_job_requirements
 from app.ai.resume_parser import extract_text_from_file, clean_extracted_text
 from app.utils.file_storage import validate_and_save_upload, remove_file_safely
 from app.services.job_sources import validate_external_url, sanitize_untrusted_job_content
+from app.services.json_ld_extractor import extract_job_posting_from_json_ld, clean_html_description
 
 router = APIRouter(prefix="/job", tags=["Job Description Analysis"])
 
@@ -228,104 +230,108 @@ def extract_job_from_url(
             skills_detected_count=analysis.get("total_skills_count", 0),
         )
 
-    # Case 2: HTML or Plain Text Job Posting
+    # Case 2: Parse HTML strictly for Schema.org JobPosting JSON-LD
     html_text = resp.text or ""
-    extracted_title = ""
-    extracted_company = ""
-    extracted_body = ""
+    ld_result = extract_job_posting_from_json_ld(html_text)
 
-    # 2a. Check for Schema.org JobPosting JSON-LD (used by Greenhouse, Lever, LinkedIn, Workday, Indeed)
-    ld_matches = re.findall(
-        r"<script[^>]+type=[\"']application/ld\+json[\"'][^>]*>(.*?)</script>",
-        html_text,
-         flags=re.IGNORECASE | re.DOTALL,
-    )
-    for ld_raw in ld_matches:
-        try:
-            ld_data = json.loads(ld_raw.strip())
-            candidates = ld_data if isinstance(ld_data, list) else [ld_data]
-            if isinstance(ld_data, dict) and isinstance(ld_data.get("@graph"), list):
-                candidates.extend(ld_data["@graph"])
-            for item in candidates:
-                if isinstance(item, dict) and "JobPosting" in str(item.get("@type", "")):
-                    extracted_title = str(item.get("title") or "").strip()
-                    org = item.get("hiringOrganization")
-                    if isinstance(org, dict):
-                        extracted_company = str(org.get("name") or "").strip()
-                    elif isinstance(org, str):
-                        extracted_company = org.strip()
-                    desc_parts = [
-                        str(item.get("description") or ""),
-                        str(item.get("qualifications") or ""),
-                        str(item.get("skills") or ""),
-                        str(item.get("experienceRequirements") or ""),
-                    ]
-                    extracted_body = sanitize_untrusted_job_content("\n\n".join(p for p in desc_parts if p), max_length=10000)
-                    if extracted_body:
-                        break
-        except Exception:
-            continue
-
-    # 2b. Check <title>, og:title, og:site_name, and <h1> if JSON-LD wasn't present
-    if not extracted_title:
-        og_title = re.search(r"<meta[^>]+property=[\"']og:title[\"'][^>]+content=[\"']([^\"']+)[\"']", html_text, re.IGNORECASE)
-        h1_match = re.search(r"<h1[^>]*>(.*?)</h1>", html_text, re.IGNORECASE | re.DOTALL)
-        title_tag = re.search(r"<title[^>]*>(.*?)</title>", html_text, re.IGNORECASE | re.DOTALL)
-        raw_t = (
-            (og_title.group(1) if og_title else "")
-            or (re.sub(r"<[^>]+>", "", h1_match.group(1)) if h1_match else "")
-            or (title_tag.group(1) if title_tag else "")
-        )
-        extracted_title = sanitize_untrusted_job_content(raw_t, max_length=140)
-        # Split "Role at Company | Site" or "Role - Company"
-        if " at " in extracted_title and not extracted_company:
-            parts = extracted_title.split(" at ", 1)
-            extracted_title = parts[0].strip()
-            extracted_company = parts[1].split("|")[0].split("-")[0].strip()
-        elif " - " in extracted_title and not extracted_company:
-            parts = extracted_title.split(" - ")
-            extracted_title = parts[0].strip()
-            extracted_company = parts[1].split("|")[0].strip()
-
-    if not extracted_company:
-        og_site = re.search(r"<meta[^>]+property=[\"']og:site_name[\"'][^>]+content=[\"']([^\"']+)[\"']", html_text, re.IGNORECASE)
-        if og_site:
-            extracted_company = sanitize_untrusted_job_content(og_site.group(1), max_length=100)
-
-    if not extracted_body:
-        # Remove nav, header, footer, script, style, svg blocks before extracting body text
-        stripped_html = re.sub(
-            r"<(script|style|svg|noscript|nav|footer|header)[^>]*>.*?</\1>",
-            " ",
-            html_text,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
-        extracted_body = clean_extracted_text(sanitize_untrusted_job_content(stripped_html, max_length=10000))
-
-    if not extracted_body or len(extracted_body.strip()) < 25:
+    if not ld_result["found"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not extract sufficient job description text from that URL. Try uploading the JD as a PDF/TXT file or pasting the text.",
+            detail=(
+                "No Schema.org 'JobPosting' JSON-LD found on this page. "
+                "To match this job, please copy the text directly from the page and paste it into the Job Description box, "
+                "or upload it as a PDF/TXT file."
+            ),
         )
 
-    inferred_title, inferred_company = _infer_title_and_company_from_jd_text(
-        extracted_body,
-        fallback_title=extracted_title or "Target Role",
-        fallback_company=extracted_company or host_company,
-    )
-    final_title = extracted_title or inferred_title
-    final_company = extracted_company or inferred_company or host_company
+    job_role = ld_result["job_role"] or "Target Role"
+    company_name = ld_result["company_name"] or host_company
+    job_description = ld_result["job_description"]
 
-    analysis = analyze_job_requirements(job_text=extracted_body, job_title=final_title, db=db)
+    if not job_description or len(job_description.strip()) < 25:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "The Schema.org JobPosting object on this page has an empty or insufficient description. "
+                "Please paste the job description text directly or upload a PDF/TXT file."
+            ),
+        )
+
+    analysis = analyze_job_requirements(job_text=job_description, job_title=job_role, db=db)
     return JobExtractedDetailsResponse(
-        title=final_title[:120],
-        company=final_company[:120] if final_company else None,
-        raw_text=extracted_body,
+        title=job_role[:120],
+        company=company_name[:120] if company_name else None,
+        raw_text=job_description,
+        job_role=job_role[:120],
+        company_name=company_name[:120] if company_name else None,
+        job_description=job_description,
+        json_ld_found=True,
         seniority_level=analysis.get("seniority_level"),
         source_type="url",
         source_label=clean_url_or_err,
         skills_detected_count=analysis.get("total_skills_count", 0),
     )
+
+
+@router.post("/extract-json-ld", response_model=JobJsonLdExtractResponse)
+def extract_json_ld_direct(
+    payload: JobExtractUrlRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Dedicated endpoint for Schema.org JSON-LD extraction:
+    Parses <script type="application/ld+json"> from a URL and retrieves strictly:
+      - company_name (from hiringOrganization.name)
+      - job_role (from title)
+      - job_description (from description)
+    Handles nested @graph objects, JSON errors, and returns a clear fallback response without using an LLM.
+    """
+    is_valid, clean_url_or_err = validate_external_url(payload.url, resolve_dns=False)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid or restricted URL: {clean_url_or_err}",
+        )
+
+    browser_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/pdf,text/plain,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.google.com/",
+    }
+
+    try:
+        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+            resp = client.get(clean_url_or_err, headers=browser_headers)
+            if resp.status_code >= 400:
+                return JobJsonLdExtractResponse(
+                    success=False,
+                    company_name=None,
+                    job_role=None,
+                    job_description=None,
+                    message=f"Remote page returned HTTP {resp.status_code}. Schema.org JobPosting JSON-LD unavailable.",
+                )
+    except Exception as exc:
+        return JobJsonLdExtractResponse(
+            success=False,
+            company_name=None,
+            job_role=None,
+            job_description=None,
+            message=f"Could not connect to URL ({type(exc).__name__}). JSON-LD unavailable.",
+        )
+
+    res = extract_job_posting_from_json_ld(resp.text or "")
+    return JobJsonLdExtractResponse(
+        success=res["found"],
+        company_name=res["company_name"],
+        job_role=res["job_role"],
+        job_description=res["job_description"],
+        message=res["message"],
+    )
+
 
 
 @router.post("/analyze", response_model=JobDescriptionResponse, status_code=status.HTTP_201_CREATED)
