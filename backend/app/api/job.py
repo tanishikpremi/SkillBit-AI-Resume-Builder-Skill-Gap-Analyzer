@@ -125,23 +125,69 @@ def extract_job_from_url(
     parsed_url = urlparse(clean_url_or_err)
     host_company = (parsed_url.hostname or "").replace("www.", "").replace("boards.", "").replace("jobs.", "").split(".")[0].title()
 
+    # Enhanced browser fingerprint headers to bypass basic Cloudflare/bot challenges
+    browser_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/pdf,text/plain,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        "Referer": "https://www.google.com/",
+    }
+
+    # Special handling for LinkedIn job postings:
+    # Public guest API: https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}
+    urls_to_try = [clean_url_or_err]
+    if "linkedin.com" in (parsed_url.hostname or "").lower():
+        job_id_match = re.search(r"(\d{8,})", clean_url_or_err)
+        if job_id_match:
+            guest_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id_match.group(1)}"
+            urls_to_try.insert(0, guest_url)
+
+    resp = None
+    last_status = None
     try:
-        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-            resp = client.get(
-                clean_url_or_err,
-                headers={
-                    "User-Agent": (
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                    ),
-                    "Accept": "text/html,application/xhtml+xml,application/pdf,text/plain,*/*;q=0.8",
-                },
-            )
-            if resp.status_code >= 400:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Remote job page returned HTTP {resp.status_code}. If the site blocks automated requests, download the JD as PDF/TXT or paste the text directly.",
-                )
+        with httpx.Client(timeout=12.0, follow_redirects=True) as client:
+            for target_url in urls_to_try:
+                try:
+                    r = client.get(target_url, headers=browser_headers)
+                    if r.status_code == 200 and r.text and len(r.text.strip()) > 50:
+                        resp = r
+                        break
+                    last_status = r.status_code
+                except Exception:
+                    continue
+
+            if resp is None:
+                if last_status and last_status in (401, 403):
+                    domain_name = parsed_url.hostname or "The job portal"
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"{domain_name} returned HTTP {last_status} (protected by bot prevention or login wall). "
+                            "Please copy the text directly from the open job page and paste it into the Job Description box, "
+                            "or upload it as a PDF/TXT file."
+                        ),
+                    )
+                elif last_status and last_status >= 400:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Remote job page returned HTTP {last_status}. If the site blocks automated requests, download the JD as PDF/TXT or paste the text directly.",
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Could not retrieve job description from that URL. Please verify the link is publicly accessible or paste the text directly.",
+                    )
     except HTTPException:
         raise
     except Exception as exc:
