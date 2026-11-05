@@ -23,6 +23,7 @@ from app.ai.resume_parser import extract_text_from_file, clean_extracted_text
 from app.utils.file_storage import validate_and_save_upload, remove_file_safely
 from app.services.job_sources import validate_external_url, sanitize_untrusted_job_content
 from app.services.json_ld_extractor import extract_job_posting_from_json_ld, clean_html_description
+from app.services.portal_jd_extractor import extract_job_from_any_portal_url
 
 router = APIRouter(prefix="/job", tags=["Job Description Analysis"])
 
@@ -125,7 +126,31 @@ def extract_job_from_url(
         )
 
     parsed_url = urlparse(clean_url_or_err)
-    host_company = (parsed_url.hostname or "").replace("www.", "").replace("boards.", "").replace("jobs.", "").split(".")[0].title()
+    host_lower = (parsed_url.hostname or "").lower()
+    host_company = host_lower.replace("www.", "").replace("boards.", "").replace("jobs.", "").split(".")[0].title()
+
+    # Fast-path for the 6 major job portals (LinkedIn, Naukri, Indeed, Glassdoor, Unstop, Internshala)
+    major_portals = ("linkedin.com", "naukri.com", "indeed.", "glassdoor.", "unstop.com", "internshala.com")
+    if any(p in host_lower for p in major_portals):
+        portal_res = extract_job_from_any_portal_url(clean_url_or_err)
+        if portal_res and portal_res.get("job_description"):
+            job_role = portal_res["job_role"] or "Target Role"
+            company_name = portal_res.get("company_name") or host_company
+            job_description = portal_res["job_description"]
+            analysis = analyze_job_requirements(job_text=job_description, job_title=job_role, db=db)
+            return JobExtractedDetailsResponse(
+                title=job_role[:120],
+                company=company_name[:120] if company_name else None,
+                raw_text=job_description,
+                job_role=job_role[:120],
+                company_name=company_name[:120] if company_name else None,
+                job_description=job_description,
+                json_ld_found=True,
+                seniority_level=analysis.get("seniority_level"),
+                source_type="url",
+                source_label=clean_url_or_err,
+                skills_detected_count=analysis.get("total_skills_count", 0),
+            )
 
     # Enhanced browser fingerprint headers to bypass basic Cloudflare/bot challenges
     browser_headers = {

@@ -325,3 +325,43 @@ def test_extract_url_api_fallback_when_unavailable(api_test_client):
         assert "no schema.org 'jobposting'" in detail
         assert "paste" in detail
 
+
+def test_portal_url_parsers_and_formatters():
+    from app.services.portal_jd_extractor import (
+        _parse_glassdoor_url,
+        _parse_naukri_url_slug,
+        format_structured_jd,
+    )
+
+    # 1. Glassdoor KO/KE offset decoder
+    gd_role, gd_comp = _parse_glassdoor_url(
+        "https://www.glassdoor.co.in/job-listing/senior-python-developer-l2m-labs-pvt-ltd-JV_KO0,23_KE24,40.htm?jl=1010270167621"
+    )
+    assert gd_role == "Senior Python Developer"
+    assert gd_comp == "L2M Labs Pvt Ltd"
+
+    # 2. Naukri slug decoder
+    nk_role, nk_comp, nk_loc, nk_exp = _parse_naukri_url_slug(
+        "https://www.naukri.com/job-listings-genai-developer-python-infosys-hyderabad-chennai-bengaluru-3-to-5-years-240826012168"
+    )
+    assert "Python" in nk_role
+    assert nk_comp == "Infosys"
+    assert "Bengaluru" in nk_loc
+    assert nk_exp == "3 to 5 years"
+
+    # 3. Clean JD formatter strips portal noise and structures inline bullets
+    formatted = format_structured_jd(
+        role="Backend Python Engineer",
+        company="Acme AI",
+        description_body="Key Responsibilities: - Build FastAPI services. - Optimize PostgreSQL queries.\nApply Now\nBeware of imposters",
+        skills=["Python", "FastAPI", "PostgreSQL"],
+        location="Bengaluru",
+        experience="2-4 years",
+    )
+    assert "Role: Backend Python Engineer" in formatted
+    assert "Company: Acme AI" in formatted
+    assert "• Build FastAPI services." in formatted
+    assert "Key Required Skills: Python, FastAPI, PostgreSQL" in formatted
+    assert "Beware of imposters" not in formatted
+
+
