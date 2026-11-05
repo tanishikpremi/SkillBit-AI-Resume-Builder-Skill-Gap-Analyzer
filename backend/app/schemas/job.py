@@ -25,10 +25,23 @@ class JobExtractedDetailsResponse(BaseModel):
     title: str
     company: Optional[str] = None
     raw_text: str
+    # Specific Schema.org JSON-LD fields
+    job_role: Optional[str] = None
+    company_name: Optional[str] = None
+    job_description: Optional[str] = None
+    json_ld_found: bool = True
     seniority_level: Optional[str] = None
     source_type: str = "file"
     source_label: Optional[str] = None
     skills_detected_count: int = 0
+    fallback_message: Optional[str] = None
+
+class JobJsonLdExtractResponse(BaseModel):
+    success: bool
+    company_name: Optional[str] = None
+    job_role: Optional[str] = None
+    job_description: Optional[str] = None
+    message: str
 
 class JobDescriptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
