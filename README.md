@@ -3,7 +3,7 @@
 <img src="frontend/public/logo-badge.png" alt="SkillBit Logo" width="96" height="96" />
 
 # ⚡ SkillBit
-### **Explainable AI Resume Builder, ATS Job Matcher & Visual Skill Gap Engine**
+### **Explainable AI Resume Builder, Personalized Job Finder & Skill Gap Engine**
 
 *Bridging candidate resumes and modern Applicant Tracking Systems (ATS) through deterministic NLP heuristics, canonical skill normalization, hybrid subword semantic matching, multi-provider LLM failover orchestration, and interactive `roadmap.sh`-style learning trees.*
 
@@ -14,16 +14,16 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-TF--IDF_NLP-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 
 <!-- AI & QUALITY LABELS -->
 [![Multi-LLM](https://img.shields.io/badge/Multi--LLM-Groq_%7C_Gemini_%7C_Grok_%7C_OpenAI-863BFF?style=flat-square&logo=sparkles&logoColor=white)](#6-multi-provider-llm-failover-architecture)
 [![Taxonomy](https://img.shields.io/badge/Canonical_Taxonomy-12_Categories_%7C_370%2B_Aliases-7C3AED?style=flat-square)](#-chart-1-canonical-skill-taxonomy-distribution)
-[![API Endpoints](https://img.shields.io/badge/REST_API-31_Endpoints_(OpenAPI_3.1)-0284C7?style=flat-square&logo=swagger&logoColor=white)](#10-complete-rest-api-reference)
-[![Database Models](https://img.shields.io/badge/Relational_ORM-13_Models_(SQLite_%2F_PostgreSQL)-4F46E5?style=flat-square&logo=postgresql&logoColor=white)](#5-system-architecture--database-design)
-[![Tests](https://img.shields.io/badge/Pytest_Suite-10_Modules_%7C_100%25_Passing-16A34A?style=flat-square&logo=pytest&logoColor=white)](#12-testing--quality-assurance)
+[![API Endpoints](https://img.shields.io/badge/REST_API-79_HTTP_Operations_(OpenAPI_3.1)-0284C7?style=flat-square&logo=swagger&logoColor=white)](#10-complete-rest-api-reference)
+[![Database Models](https://img.shields.io/badge/Relational_ORM-23_Tables_(SQLite_%2F_PostgreSQL)-4F46E5?style=flat-square&logo=postgresql&logoColor=white)](#43-updated-entity-relationship-er-diagram--23-tables)
+[![Tests](https://img.shields.io/badge/Pytest_Suite-12_Modules-16A34A?style=flat-square&logo=pytest&logoColor=white)](#12-testing--quality-assurance)
 [![Security](https://img.shields.io/badge/Auth-JWT_HS256_%2B_Google_OAuth_2.0-EA580C?style=flat-square&logo=google&logoColor=white)](#8-tech-stack--libraries)
 [![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](LICENSE)
 
@@ -53,8 +53,9 @@
 | **Evidence Verification Tiers** | **4** Tiers (`STRONG: 1.0`, `MODERATE: 0.85`, `LISTED: 0.60`, `MENTIONED: 0.40`) | Section-aware action-verb & metric detection (`skill_extractor.py`) |
 | **Skill Gap Classification** | **4** States (`STRONG_MATCH`, `WEAK_EVIDENCE`, `PARTIAL_MATCH`, `MISSING`) | Priority-ranked (`HIGH`, `MEDIUM`, `LOW`) with snippet proof (`gap_analyzer.py`) |
 | **Multi-LLM Failover Engine** | **5** Providers (`Groq` → `Gemini` → `Grok` → `OpenAI` → `Local Engine`) | Zero-downtime JSON-validated orchestration (`llm_service.py`) |
-| **REST API & Data Layer** | **31** Endpoints across **9** Routers • **13** SQLAlchemy 2.0 Tables | Auto-migrating SQLite / PostgreSQL engine (`main.py`, `models/`) |
-| **Automated Test Coverage** | **10** Test Suites • **32+** Unit & E2E Integration Tests | 100% pass rate with isolated in-memory DB fixtures (`backend/tests/`) |
+| **REST API & Data Layer** | **79** documented HTTP operations: **77** across **10** routers plus **2** system routes • **23** SQLAlchemy tables | Route declarations in `backend/app/api/` and `main.py`; ORM declarations in `models/` |
+| **Personalized Job Discovery** | **7** progress stages • **7** weighted fit factors • Multi-resume comparison | Candidate snapshot, source provenance, eligibility, bookmarks and application tracking |
+| **Automated Test Coverage** | **12** test modules | Includes job discovery and Schema.org JSON-LD extraction tests (`backend/tests/`); run locally to verify results |
 
 ---
 
@@ -130,22 +131,25 @@ SkillBit solves each problem through a transparent, verifiable, human-in-the-loo
 
 ### 4.1 High-Level System Architecture Diagram
 
+The default Windows launcher serves the TypeScript client in `skillbit/`; `frontend/` contains the earlier JSX client.
+
 ```mermaid
 flowchart TB
-    subgraph CLIENT["🖥️ Frontend Presentation Layer (React 19 + Vite 8 + Tailwind CSS 3.4)"]
+    subgraph CLIENT["Frontend Presentation Layer: skillbit/ (React 19 + TypeScript + Vite 8 + Tailwind CSS 4)"]
         direction LR
-        UI_UPLOAD["📄 Upload & Parser Inspector\n(ResumeUpload.jsx)"]
-        UI_DASH["📊 Career Readiness Hub\n(Dashboard.jsx)"]
-        UI_MATCH["🎯 Job Fit & Gap Analyzer\n(JobAnalysis.jsx + ScoreGauge)"]
-        UI_ROAD["🌳 Visual Roadmap Tree\n(Recommendations + RoadmapTree)"]
-        UI_BUILD["🛠️ ATS Builder & GitHub Importer\n(ResumeBuilder + STAR Modal)"]
-        UI_ADMIN["🎓 Placement Cohort Portal\n(AdminTaxonomy.jsx)"]
+        UI_UPLOAD["Resume Upload and Profile Extraction"]
+        UI_DASH["Master Profile, Match History and Settings"]
+        UI_MATCH["Job Fit, URL and File Import"]
+        UI_ROAD["Learning Roadmaps"]
+        UI_BUILD["ATS Builder, GitHub Import and Auto-format"]
+        UI_JOBS["Personalized Job Finder and Application Tracker"]
+        UI_ADMIN["Placement Cohort Portal"]
     end
 
     subgraph GATEWAY["🔐 API & Security Gateway (FastAPI + Pydantic v2)"]
         direction LR
         AUTH["🔑 Auth & RBAC Middleware\nJWT (HS256) + Bcrypt + Google OAuth 2.0"]
-        ROUTERS["📡 9 Modular REST Routers\n31 Validated OpenAPI Endpoints"]
+        ROUTERS["10 Modular REST Routers\n79 Documented HTTP Operations including System Routes"]
     end
 
     subgraph AI_CORE["🧠 Layered Hybrid AI & NLP Engine (backend/app/ai/)"]
@@ -163,27 +167,24 @@ flowchart TB
         direction LR
         PDF_SVC["📑 ReportLab ATS PDF Builder\nSingle-Column + Clickable Hyperlinks"]
         GH_SVC["🐙 GitHub Repo Metadata Analyzer\nREST API v3 + STAR Bullet Synthesis"]
-        EMAIL_SVC["✉️ Async SMTP Dispatcher\nOnboarding & Alert Notifications"]
+        EMAIL_SVC["SMTP Verification Dispatcher\n6-digit OTP and Activation Link"]
+                DISCOVERY_SVC["Multi-source Job Discovery\nProfile Snapshot, Deduplication, Eligibility and Ranking"]
     end
 
     subgraph DATA["🗄️ Persistence Layer (SQLAlchemy 2.0 ORM)"]
         direction LR
-        DB[("🛢️ Relational Database\nSQLite (Zero-Config) / PostgreSQL\n13 Normalized Tables")]
+        DB[("Relational Database\nSQLite / PostgreSQL\n23 SQLAlchemy Tables")]
         FS[("📁 Private UUID File Vault\nbackend/uploads/")]
     end
 
-    CLIENT <==>|"Axios + Bearer JWT"| GATEWAY
+    CLIENT <==>|"Fetch API + Bearer JWT"| GATEWAY
     GATEWAY --> AI_CORE
     GATEWAY --> SERVICES
     AI_CORE <--> DB
     SERVICES <--> DB
     PARSER <--> FS
 
-    style CLIENT fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#1e1b2e
-    style GATEWAY fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
-    style AI_CORE fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#3b0764
-    style SERVICES fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d
-    style DATA fill:#fffbeb,stroke:#d97706,stroke-width:2px,color:#78350f
+
 ```
 
 ---
@@ -229,68 +230,335 @@ sequenceDiagram
 
 ---
 
-### 4.3 Relational Database Schema (13 Models)
+### 4.3 Updated Entity Relationship (ER) Diagram — 23 Tables
+
+These two views cover all tables declared in `backend/app/models/`. Attributes are abbreviated to emphasize primary keys, foreign keys, and feature-specific data.
+
+#### Core accounts, profiles, resumes and skill-gap analysis (14 tables)
 
 ```mermaid
 erDiagram
-    USERS ||--o| PROFILES : "1:1 owns"
-    USERS ||--o{ RESUMES : "1:N creates/uploads"
-    USERS ||--o{ JOB_DESCRIPTIONS : "1:N analyzes"
-    USERS ||--o{ ANALYSIS_HISTORY : "1:N runs"
-
-    PROFILES ||--o{ EDUCATIONS : "1:N"
-    PROFILES ||--o{ EXPERIENCES : "1:N"
-    PROFILES ||--o{ PROJECTS : "1:N"
-    PROFILES ||--o{ USER_SKILLS : "1:N"
-
-    SKILLS ||--o{ SKILL_ALIASES : "1:N normalizes"
-    SKILLS ||--o{ USER_SKILLS : "1:N references"
-    SKILLS ||--o{ JOB_SKILLS : "1:N requires"
-    SKILLS ||--o{ SKILL_GAPS : "1:N evaluates"
-    SKILLS ||--o{ RECOMMENDATIONS : "1:N prescribes"
-
-    JOB_DESCRIPTIONS ||--o{ JOB_SKILLS : "1:N contains"
-    RESUMES ||--o{ ANALYSIS_HISTORY : "1:N evaluated_in"
-    JOB_DESCRIPTIONS ||--o{ ANALYSIS_HISTORY : "1:N target_of"
-    ANALYSIS_HISTORY ||--o{ SKILL_GAPS : "1:N produces"
-    ANALYSIS_HISTORY ||--o{ RECOMMENDATIONS : "1:N generates"
+    USERS ||--o| PROFILES : owns
+    USERS ||--o{ RESUMES : uploads_or_builds
+    USERS ||--o{ JOB_DESCRIPTIONS : analyzes
+    USERS ||--o{ ANALYSIS_HISTORY : runs
+    PROFILES ||--o{ EDUCATIONS : contains
+    PROFILES ||--o{ EXPERIENCES : contains
+    PROFILES ||--o{ PROJECTS : contains
+    PROFILES ||--o{ USER_SKILLS : lists
+    SKILLS ||--o{ SKILL_ALIASES : normalizes
+    SKILLS ||--o{ USER_SKILLS : references
+    SKILLS ||--o{ JOB_SKILLS : required_by
+    SKILLS ||--o{ SKILL_GAPS : evaluated_in
+    SKILLS ||--o{ RECOMMENDATIONS : taught_by
+    JOB_DESCRIPTIONS ||--o{ JOB_SKILLS : contains
+    RESUMES ||--o{ ANALYSIS_HISTORY : evaluated_in
+    JOB_DESCRIPTIONS ||--o{ ANALYSIS_HISTORY : target_of
+    ANALYSIS_HISTORY ||--o{ SKILL_GAPS : produces
+    ANALYSIS_HISTORY ||--o{ RECOMMENDATIONS : generates
 
     USERS {
-        string id PK "UUID v4"
-        string email UK "Indexed"
-        string hashed_password "Bcrypt"
-        string full_name
-        string role "user | admin | mentor"
-        string google_id UK "Google OAuth Sub"
-        string picture "Avatar URL"
+        string id PK
+        string email UK
+        string hashed_password
+        string role
+        boolean is_verified
+        string verification_token UK
+        string verification_otp
+        datetime verification_token_expires_at
+        string google_id UK
+        text picture "URL or image data URI"
+    }
+    PROFILES {
+        string id PK
+        string user_id FK, UK
+        string headline
+        text summary
+        string location
+    }
+    EDUCATIONS {
+        string id PK
+        string profile_id FK
+        string institution
+        string degree
+    }
+    EXPERIENCES {
+        string id PK
+        string profile_id FK
+        string company
+        string role_title
+        json bullets
+    }
+    PROJECTS {
+        string id PK
+        string profile_id FK
+        string title
+        json technologies
+        string repo_url
+    }
+    USER_SKILLS {
+        string id PK
+        string profile_id FK
+        string skill_id FK
+        string proficiency
+        boolean verified_by_resume
     }
     SKILLS {
-        string id PK "UUID v4"
-        string canonical_name UK "e.g. PostgreSQL"
-        string category "12 Categories"
-        text description
+        string id PK
+        string canonical_name UK
+        string category
     }
     SKILL_ALIASES {
-        string id PK "UUID v4"
+        string id PK
         string skill_id FK
-        string alias_name "e.g. postgres, psql"
+        string alias_name
     }
     RESUMES {
-        string id PK "UUID v4"
+        string id PK
         string user_id FK
-        string source_type "uploaded | builder"
-        json structured_json "Sections & Extracted Skills"
-        float ats_score "0.0 - 100.0"
+        string source_type "uploaded or builder"
+        json structured_json
+        float ats_score
+    }
+    JOB_DESCRIPTIONS {
+        string id PK
+        string user_id FK
+        string title
+        text raw_text
+        string seniority_level
+    }
+    JOB_SKILLS {
+        string id PK
+        string job_id FK
+        string skill_id FK
+        string importance
+        float weight
     }
     ANALYSIS_HISTORY {
-        string id PK "UUID v4"
-        float overall_score "0.0 - 100.0"
-        float exact_match_score "0.0 - 100.0"
-        float semantic_score "0.0 - 100.0"
-        float experience_score "0.0 - 100.0"
-        json ai_insights "Executive Readiness JSON"
+        string id PK
+        string user_id FK
+        string resume_id FK
+        string job_id FK
+        float overall_score
+        json ai_insights
+    }
+    SKILL_GAPS {
+        string id PK
+        string analysis_id FK
+        string skill_id FK
+        string gap_status
+        string priority
+    }
+    RECOMMENDATIONS {
+        string id PK
+        string analysis_id FK
+        string skill_id FK
+        string learning_topic
+        json learning_path
     }
 ```
+
+#### Personalized job discovery and application tracking (9 additional tables)
+
+`USERS` and `RESUMES` below are the same tables shown above. `JOB_SOURCES` is a standalone registry: evidence records store a `source_slug`, not a foreign key to that registry. Likewise, `JOB_RECOMMENDATIONS.best_resume_id` is a stored identifier, not a declared foreign key; only application records have a resume FK.
+
+```mermaid
+erDiagram
+    USERS ||--o| CANDIDATE_PROFILE_SNAPSHOTS : consolidates
+    USERS ||--o| USER_JOB_PREFERENCES : configures
+    USERS ||--o{ JOB_SEARCH_RUNS : starts
+    USERS ||--o{ JOB_RECOMMENDATIONS : receives
+    USERS ||--o{ SAVED_JOBS : bookmarks
+    USERS ||--o{ JOB_APPLICATIONS : tracks
+    JOB_LISTINGS ||--o{ JOB_SOURCE_EVIDENCES : supported_by
+    JOB_LISTINGS ||--o{ JOB_RECOMMENDATIONS : ranked_in
+    JOB_LISTINGS ||--o{ SAVED_JOBS : saved_as
+    JOB_LISTINGS ||--o{ JOB_APPLICATIONS : applied_to
+    JOB_SEARCH_RUNS o|--o{ JOB_RECOMMENDATIONS : produces
+    RESUMES o|--o{ JOB_APPLICATIONS : attached_to
+
+    JOB_SOURCES {
+        string id PK
+        string slug UK
+        string category
+        string integration_mode
+        boolean requires_api_key
+        boolean is_enabled
+    }
+    CANDIDATE_PROFILE_SNAPSHOTS {
+        string id PK
+        string user_id FK, UK
+        json unified_profile_json
+        json resume_conflicts_json
+        json source_attribution_json
+        int resume_count_analyzed
+    }
+    USER_JOB_PREFERENCES {
+        string id PK
+        string user_id FK, UK
+        json preferred_roles
+        json preferred_locations
+        json scoring_weights
+        boolean consent_external_llm
+    }
+    JOB_SEARCH_RUNS {
+        string id PK
+        string user_id FK
+        string status
+        int progress_pct
+        json generated_queries
+        json sources_queried
+        boolean cancel_requested
+    }
+    JOB_LISTINGS {
+        string id PK
+        string canonical_fingerprint UK
+        string title
+        string company
+        string application_url
+        json required_skills
+        string availability_status
+        datetime last_verified_at
+    }
+    JOB_SOURCE_EVIDENCES {
+        string id PK
+        string job_listing_id FK
+        string source_slug
+        string source_url
+        text original_post_excerpt
+    }
+    JOB_RECOMMENDATIONS {
+        string id PK
+        string user_id FK
+        string job_listing_id FK
+        string search_run_id FK "Nullable"
+        float match_score
+        json score_breakdown
+        string eligibility_status
+        string best_resume_id "Not a foreign key"
+        boolean is_dismissed
+    }
+    SAVED_JOBS {
+        string id PK
+        string user_id FK
+        string job_listing_id FK
+        text notes
+    }
+    JOB_APPLICATIONS {
+        string id PK
+        string user_id FK
+        string job_listing_id FK
+        string resume_id FK "Nullable"
+        string status
+        string applied_via_url
+        datetime applied_at
+    }
+```
+
+Each user/listing pair is unique in `job_recommendations`, `saved_jobs`, and `job_applications`; source evidence is unique per listing/source URL. Deleting a resume or search run sets its optional application/recommendation reference to `NULL` at the database FK level.
+
+### 4.4 Updated Data Flow Diagram (DFD)
+
+#### Level 0 — System context
+
+```mermaid
+flowchart TB
+    C["Candidate"]
+    A["Administrator"]
+    S(("0. SkillBit Career Intelligence Platform"))
+    O["Google Identity"]
+    M["SMTP Mail Server"]
+    X["Public Job APIs, Career Boards and Job Pages"]
+    G["GitHub REST API"]
+    L["Configured LLM Providers"]
+
+    C -->|"Credentials, resumes, job inputs and preferences"| S
+    S -->|"JWT, PDFs, fit reports, roadmaps and job recommendations"| C
+    A -->|"Taxonomy changes and metrics requests"| S
+    S -->|"Cohort analytics"| A
+    S -->|"ID token verification request"| O
+    O -->|"Verified identity"| S
+    S -->|"Verification link and OTP email"| M
+    M -->|"Email delivery"| C
+    S -->|"Search queries and public URL requests"| X
+    X -->|"Listings, source evidence and JobPosting data"| S
+    S -->|"Public repository request"| G
+    G -->|"Repository metadata"| S
+    S -->|"Generation prompts; discovery explanations honor consent"| L
+    L -->|"Insights, bullets and learning content"| S
+```
+
+#### Level 1 — Internal processes and data stores
+
+```mermaid
+flowchart TB
+    C["Candidate via React Client"]
+    A["Administrator"]
+    EXT["Public Job Sources and Pages"]
+    GH["GitHub API"]
+    IDP["Google Identity"]
+    SMTP["SMTP Server"]
+    LLM["LLM Providers or Local Fallback"]
+
+    P1(("1. Authenticate and Verify Account"))
+    P2(("2. Parse Resume and Maintain Profile"))
+    P3(("3. Import and Analyze Job Description"))
+    P4(("4. Match Skills and Generate Roadmaps"))
+    P5(("5. Build and Export Resume"))
+    P6(("6. Discover, Normalize and Rank Jobs"))
+    P7(("7. Track Saved Jobs and Applications"))
+    P8(("8. Maintain Taxonomy and Aggregate Metrics"))
+
+    D1[("D1 Users and Verification State")]
+    D2[("D2 Profiles, Resumes, Skills and Private Files")]
+    D3[("D3 Job Descriptions and Job Skills")]
+    D4[("D4 Analysis History, Skill Gaps and Roadmaps")]
+    D5[("D5 Snapshots, Preferences and Search Runs")]
+    D6[("D6 Source Registry, Listings and Evidence")]
+    D7[("D7 Job Recommendations, Saved Jobs and Applications")]
+
+    C -->|"Credentials, OTP, token or settings changes"| P1
+    P1 <-->|"Identity verification"| IDP
+    P1 -->|"Activation link and OTP"| SMTP
+    P1 <-->|"Account and verification state"| D1
+    P1 -->|"JWT and account details"| C
+    C -->|"Resume file or profile edits"| P2
+    P2 <-->|"Parsed sections, skill evidence and profile records"| D2
+    C -->|"Pasted JD, URL or PDF/DOCX/TXT"| P3
+    P3 <-->|"Public page or PDF retrieval"| EXT
+    P3 -->|"Normalized JD and weighted requirements"| D3
+    D2 -->|"Resume evidence and canonical skills"| P4
+    D3 -->|"Target requirements"| P4
+    C -->|"Match request or custom roadmap request"| P4
+    P4 <-->|"Insights and learning content"| LLM
+    P4 -->|"Scores, gaps and learning paths"| D4
+    P4 -->|"Explainable report and roadmaps"| C
+    C -->|"Builder edits, repo URL or formatting request"| P5
+    P5 <-->|"Public repository metadata"| GH
+    P5 <-->|"Bullet and formatting suggestions"| LLM
+    P5 <-->|"Structured resume"| D2
+    P5 -->|"ATS PDF and editable suggestions"| C
+    C -->|"Search request and job preferences"| P6
+    D2 -->|"Master profile and active resumes"| P6
+    P6 <-->|"Unified snapshot, preferences and search progress"| D5
+    P6 <-->|"Search queries and public listings"| EXT
+    P6 <-->|"Deduplicated jobs and provenance"| D6
+    P6 <-->|"Consent-controlled explanations"| LLM
+    P6 -->|"Ranked fit, eligibility and best resume"| D7
+    P6 -->|"Search progress and recommendations"| C
+    C -->|"Save, dismiss, verify or mark applied"| P7
+    P7 <-->|"Availability check"| EXT
+    P7 <-->|"Listing availability"| D6
+    P7 <-->|"Bookmarks, dismissals and application records"| D7
+    P7 -->|"Saved and applied job status"| C
+    A -->|"Taxonomy edits and metrics request"| P8
+    P8 <-->|"Skills and aliases"| D2
+    D1 -->|"Candidate counts"| P8
+    D4 -->|"Scores and recurring gaps"| P8
+    P8 -->|"Cohort readiness metrics"| A
+```
+
+The DFD stores are logical groups of the ER tables, not additional tables. JWT ownership checks protect user-specific operations; admin operations require the admin role. Live discovery depends on network/source availability and may include seeded index entries; availability labels are indicators, not a guarantee that an opening remains active. Marking a job applied records the action locally—it does not submit an application to an employer.
 
 ---
 
@@ -453,24 +721,28 @@ flowchart LR
 
 ## 7. Core Functionality & Feature Tour
 
-### 1️⃣ Layout-Aware Resume Ingestion (`/upload`)
+The active client is `skillbit/`, with authenticated screens under `/app/*`. The earlier `frontend/` JSX client uses shorter routes such as `/upload` and `/match` and does not include every feature below.
+
+### 1️⃣ Layout-Aware Resume Ingestion (`/app/upload`)
 * **Multi-Format Support**: Accepts `.pdf`, `.docx`, and `.txt` files up to 5 MB (`file_storage.py` stores files in a private UUID-named vault).
 * **Layout Block Sorting**: Uses **PyMuPDF (`fitz`)** coordinate block sorting (`page.get_text("blocks", sort=True)`) to preserve reading order, normalize Unicode bullets, and unwrap hyphenated line-breaks (`"imple-\nmentation"` $\rightarrow$ `"implementation"`).
 * **Real-Time Extraction Inspector**: Displays baseline ATS Readability Score, detected structural sections (`Contact`, `Summary`, `Experience`, `Projects`, `Education`, `Skills`), and extracted canonical skills with their evidence badges (`STRONG`, `MODERATE`, `LISTED`).
 
-### 2️⃣ AI Career Readiness Hub (`/dashboard`)
+### 2️⃣ Career Readiness Metrics & Master Profile (`/app/profile`)
 * **Composite Quality KPIs**: Computes **Profile Completeness %**, **Quantified Achievements Score** (percentage of experience bullets containing measurable numbers/metrics), **ATS Formatting Score**, and **Overall Quality Composite**.
 * **One-Click Master Profile Sync**: Synchronizes parsed resume sections, work history, projects, and verified skills into the persistent user profile (`POST /api/profile/sync-from-resume`).
 * **Skill Category Distribution & Critical Gaps**: Visualizes the candidate's skill portfolio across categories and highlights top high-priority gaps from recent evaluations.
 
-### 3️⃣ Explainable Job Fit & Skill Gap Analyzer (`/match`)
+### 3️⃣ Explainable Job Fit & Skill Gap Analyzer (`/app/match`, `/app/match/:id`)
+* **Job Description Import**: Paste a JD, upload a PDF/DOCX/TXT file, or import a public job URL. File extraction infers role title, company, seniority, and detected skill count; temporary JD uploads are deleted after parsing.
+* **Schema.org `JobPosting` Extraction**: URL import reads structured JSON-LD, including nested `@graph` objects, to recover the company, role, and description without an LLM. Direct PDF URLs are also supported. LinkedIn URLs attempt the public guest endpoint, but access is not guaranteed. HTML pages without usable `JobPosting` data or behind a login/bot wall require pasted text or a file upload; arbitrary HTML/plain-text URL extraction is not guaranteed.
 * **Intelligent JD Segmentation**: Automatically detects role seniority (`Lead`, `Senior`, `Mid`, `Entry`) and splits Job Descriptions into **Required Qualifications** ($W=1.0$) vs. **Preferred / Bonus Skills** ($W=0.5$).
-* **SVG Radial Score Gauge (`ScoreGauge.jsx`)**: Visualizes Overall Fit Score alongside granular bars for **Exact Match**, **Semantic Context**, and **Experience Evidence**.
+* **Fit Score Visualization**: Visualizes Overall Fit Score alongside granular bars for **Exact Match**, **Semantic Context**, and **Experience Evidence**.
 * **Executive AI Insights Banner**: Displays readiness tier (`Interview Ready`, `Near Match (Minor Gaps)`, or `Core Upskilling Required`), a 2–3 sentence executive synthesis, **Top Improvement Priorities**, and an **Immediate Strategic Action Plan** with on-demand LLM regeneration.
-* **Filterable Gap Drilldown Cards (`GapCard.jsx`)**: Filter by `ALL`, `MISSING`, `WEAK_EVIDENCE`, or `STRONG_MATCH`. Each card shows side-by-side **Resume Evidence** vs. **Job Requirement Context** and a direct link to launch the skill's learning roadmap.
+* **Filterable Gap Drilldown Cards**: Filter by `ALL`, `MISSING`, `WEAK_EVIDENCE`, or `STRONG_MATCH`. Each card shows side-by-side **Resume Evidence** vs. **Job Requirement Context** and a direct link to launch the skill's learning roadmap.
 
-### 4️⃣ Interactive `roadmap.sh`-Style Learning Trees (`/recommendations`)
-* **4-Stage Sequential Progression (`RoadmapTree.jsx`)**: Breaks every missing or weak skill into 4 chronological stages:
+### 4️⃣ Interactive `roadmap.sh`-Style Learning Trees (`/app/roadmaps`)
+* **4-Stage Sequential Progression**: Breaks every missing or weak skill into 4 chronological stages:
   1. *Stage 01: Foundations & Modern Syntax* (3–5 days)
   2. *Stage 02: Core Architecture & Patterns* (5–7 days)
   3. *Stage 03: Production Engineering & Quality* (5–7 days)
@@ -478,30 +750,54 @@ flowchart LR
 * **Interactive Topic Checklists**: Candidates click individual sub-topics (`1.1`, `1.2`, etc.) to mark them mastered; progress percentage is persisted in `localStorage`.
 * **Custom On-Demand AI Roadmap Generator**: Candidates can generate a custom 4-stage roadmap for *any* arbitrary technology and target role via `POST /api/recommendations/generate-roadmap`.
 
-### 5️⃣ ATS Resume Builder, GitHub Repo Analyzer & PDF Exporter (`/builder`)
+### 5️⃣ ATS Resume Builder, GitHub Repo Analyzer & PDF Exporter (`/app/builder`)
 * **Live Split-Screen Editor & Preview**: Edit contact coordinates, summary, technical skills, work experiences, projects, and education with an instant single-column ATS preview.
 * **GitHub Repository AI Importer (`POST /api/resume/analyze-repo`)**: Paste any public GitHub repository URL (e.g., `https://github.com/owner/repo`) to automatically fetch repository metadata, stars, primary language, and topics via the GitHub REST API and synthesize 3 high-impact **STAR accomplishment bullets**.
-* **Interactive STAR Bullet Optimizer (`BulletSuggestionModal.jsx`)**: Click **"AI Improve (STAR)"** on any experience or project bullet to transform passive statements into quantified, action-driven accomplishments.
+* **Interactive STAR Bullet Optimizer**: Click **"AI Improve (STAR)"** on any experience or project bullet to transform passive statements into quantified, action-driven accomplishments.
+* **AI Auto-format & Messy Text Fixer (`POST /api/resume/auto-format`)**: Converts messy resume text or existing structured content into editable formatted sections, normalizes casing/dates/links, groups skills, and suggests ATS typography settings. Review generated content before saving or exporting.
 * **Server-Side ReportLab PDF Export (`GET /api/resume/{id}/export`)**: Streams a binary, machine-readable single-column PDF with `Helvetica` typography, clean horizontal rules, and clickable blue underlined hyperlinks (`LinkedIn`, `GitHub`, `Live Demo`).
 
-### 6️⃣ University Placement & Admin Cohort Portal (`/admin`)
+### 6️⃣ University Placement & Admin Cohort Portal (`/app/admin`)
 * **Role-Based Access Control (`adminOnly`)**: Restricted to placement officers and administrators (`admin@skillbit.ai`).
 * **Cohort Readiness Telemetry**: Aggregates total candidates, total resumes built/uploaded, total job evaluations run, cohort-wide average ATS match index, and the **Top 10 Most Frequent Missing Skills** across the student batch to guide curriculum bootcamps.
 * **Canonical Taxonomy CRUD**: Add new canonical skills, descriptions, and comma-separated aliases directly into the database.
+
+### 7️⃣ Personalized Multi-Source Job Finder (`/app/jobs`)
+* **Unified Candidate Intelligence**: Consolidates the Master Profile and active resumes into a persisted snapshot with source attribution, resume conflicts, skills, projects, education, inferred roles, and career stage.
+* **Seven-Stage Search Workflow**: Understand profile → generate queries → search sources → analyze opportunities → check availability → rank recommendations → prepare results. Background search supports progress polling, cancellation, and saved search history.
+* **Implemented Search Adapters**: Queries Remotive, Arbeitnow, selected public Greenhouse boards, Hacker News, Reddit hiring feeds, and JSearch-backed portals when `JSEARCH_API_KEY` is configured. The source registry also lists integrations requiring keys or not yet implemented; a registered source is not a promise of a working adapter. Seeded index entries remain available when external sources are unreachable and should not be mistaken for newly verified live openings.
+* **Deduplication & Provenance**: Consolidates listings by canonical company/title fingerprint while retaining source URLs, excerpts, discovery queries, and verification timestamps.
+* **Explainable Seven-Factor Ranking**: Default weights are skill compatibility **25%**, experience/project relevance **20%**, role alignment **15%**, education eligibility **15%**, location/work preference **10%**, freshness/availability **10%**, and other preferences **5%**. This discovery score is separate from the resume-to-JD score in Section 5. Recommendations include eligibility reasons, strong/partial/missing skills, concerns, preparation steps, and the best matching resume with comparisons.
+* **Preferences & Privacy**: Configure desired/alternative roles, locations, work arrangements, employment types, internships, salary, industries, excluded companies, preferred sources, score threshold, and scoring weights. The `consent_external_llm` preference controls external LLM use for discovery explanations; it is not a global opt-out for other AI features. Search frequency is stored as a preference, not a guarantee of scheduled background searches.
+* **Filters & Opportunity Tabs**: Browse Recommended, Best Matches, Latest, Internships, Fresher-Friendly, Remote, Startups & Niche, Saved Jobs, and Applied; refine results by role, skill, location, company, source, salary, resume, and other supported filters.
+* **Saved Jobs & Application Tracking**: Bookmark or dismiss recommendations, restore dismissed results through the API, recheck availability, and record application status, notes, URL, and selected resume. Applications are submitted on the external employer site; SkillBit tracks them locally.
+
+### 8️⃣ Email Verification, Account Settings & Profile Pictures
+* **Dual-Method Verification (`/signup`, `/verify-email`)**: New email/password registrations receive a six-digit OTP and activation link, valid for **15 minutes**. Resending replaces both codes and enforces a **60-second** cooldown. Successful verification establishes a JWT session; unverified regular accounts cannot use password login.
+* **SMTP Delivery & Development Mode**: Sends verification email through STARTTLS, with SSL/465 fallback. SMTP settings are reloaded from `.env` when used, Google App Password spaces are normalized, and sender headers are sanitized. Without SMTP credentials, the backend prints the OTP and activation link to its terminal for local development. `/api/auth/smtp-status` checks connectivity; authenticated users can send a test email.
+* **Settings Modal**: Open Settings from the app's profile menu to change a password or update the avatar. Uploading an image crops/resizes it to **256 × 256**, converts it to a JPEG data URI, and persists it through `/api/auth/picture`. A public image URL can also be used, and the picture can be removed.
+* **Theme & Local Preferences**: The active client offers light/dark theme switching and locally saved roadmap-level and auto-sync preferences.
+
+### 9️⃣ Resume-Derived Profiles & Match History (`/app/profile`, `/app/history`)
+* Upload a resume from the Profile screen, preview extracted details, and choose a title before synchronizing to the Master Profile. The sync API can target a specific resume and optionally replace existing education, experience, project, and skill records; it does not create multiple independent Master Profile rows per user.
+* Review saved evaluations, reopen score/gap reports, and delete an analysis through `DELETE /api/match/{analysis_id}`. Analysis deletion also removes its associated gaps and learning recommendations.
 
 ---
 
 ## 8. Tech Stack & Libraries
 
-### 🖥️ Frontend Stack (`/frontend`)
-| Technology | Badge | Version | Role in SkillBit |
-| :--- | :--- | :---: | :--- |
-| **React** | ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB) | `^19.2.8` | Component-driven SPA architecture, hooks, and context state |
-| **Vite** | ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white) | `^8.3.0` | Lightning-fast HMR dev server and optimized ES module bundler |
-| **Tailwind CSS** | ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white) | `^3.4.17` | Glassmorphic SaaS design system (`#F5F2FC` canvas, `#11121F` sidebar) |
-| **React Router** | ![React Router](https://img.shields.io/badge/React_Router-CA4245?style=flat-square&logo=react-router&logoColor=white) | `^7.18.4` | Client-side routing, URL query state, and `ProtectedRoute` RBAC guards |
-| **Lucide React** | ![Lucide](https://img.shields.io/badge/Lucide_Icons-F56565?style=flat-square) | `^1.52.0` | Crisp, consistent vector iconography across all views |
-| **Axios** | ![Axios](https://img.shields.io/badge/Axios-5A29E4?style=flat-square&logo=axios&logoColor=white) | `^1.20.0` | HTTP client with automatic JWT Bearer token request/response interceptors |
+### 🖥️ Active Frontend Stack (`/skillbit`)
+| Technology | Version | Role in SkillBit |
+| :--- | :---: | :--- |
+| **React / React DOM** | `^19.0.0` | Component-driven UI and shared application state |
+| **TypeScript** | `^5.7.0` | Typed UI, API contracts, and client logic |
+| **Vite** | `^8.0.5` | Development server and production bundler |
+| **Tailwind CSS** | `^4.0.0` | Utility styling through `@tailwindcss/vite` |
+| **React Router** | `^8.5.0` | `/app/*` routes with authenticated/admin guards |
+| **Lucide React** | `^1.61.0` | Interface icons |
+| **Fetch API** | Browser native | Bearer-token requests with configurable `VITE_API_URL` |
+
+The earlier `frontend/` client uses JSX, Tailwind CSS 3, React Router DOM, and Axios. `start.bat` launches `skillbit/`, not `frontend/`.
 
 ### ⚙️ Backend, AI/NLP & Data Stack (`/backend`)
 | Technology | Badge | Version | Role in SkillBit |
@@ -509,7 +805,7 @@ flowchart LR
 | **Python** | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) | `3.12 / 3.14` | Core backend runtime and scientific computing environment |
 | **FastAPI** | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white) | `>=0.110.0` | High-performance async REST framework with automatic OpenAPI/Swagger docs |
 | **Pydantic v2** | ![Pydantic](https://img.shields.io/badge/Pydantic_v2-E92063?style=flat-square&logo=pydantic&logoColor=white) | `>=2.6.0` | Strict request/response schema validation and `.env` settings management |
-| **SQLAlchemy 2.0** | ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white) | `>=2.0.28` | Relational ORM managing 13 interconnected tables & auto-migrations |
+| **SQLAlchemy 2.0** | ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white) | `>=2.0.28` | Relational ORM managing 23 tables, including discovery and application tracking |
 | **Scikit-Learn** | ![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-F7931E?style=flat-square&logo=scikitlearn&logoColor=white) | `>=1.4.0` | `TfidfVectorizer` (word & `char_wb` n-grams) + `cosine_similarity` engine |
 | **PyMuPDF (`fitz`)** | ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-00599C?style=flat-square) | `>=1.23.0` | Coordinate-sorted PDF block extraction and artifact cleaning |
 | **python-docx** | ![DOCX](https://img.shields.io/badge/python--docx-2B579A?style=flat-square&logo=microsoft-word&logoColor=white) | `>=1.1.0` | Paragraph and table extraction from Microsoft Word `.docx` resumes |
@@ -544,28 +840,41 @@ Skillbit/
 │   │   │   ├── job_analyzer.py           # Seniority detector & Required vs Preferred segmenter
 │   │   │   ├── embedding_service.py      # Hybrid Word TF-IDF + Token + Char N-Gram similarity
 │   │   │   ├── matching_engine.py        # Deterministic multi-factor fit scoring engine
+│   │   │   ├── candidate_intelligence.py # Unified multi-resume profile snapshots
+│   │   │   ├── job_discovery_agent.py    # Seven-stage job discovery orchestration
+│   │   │   ├── job_matcher_ranker.py     # Eligibility, weighted fit & best-resume ranking
 │   │   │   ├── gap_analyzer.py           # 4-tier gap classification & priority matrix
 │   │   │   ├── recommendation_engine.py  # Curated learning catalog & roadmap synthesizer
 │   │   │   └── resume_content_generator.py # Anti-hallucination STAR bullet optimizer
-│   │   ├── 📂 api/                       # 📡 REST API Routers (31 Endpoints)
-│   │   │   ├── auth.py                   # Register, Login, Google OAuth 2.0, SMTP test
+│   │   ├── 📂 api/                       # 10 routers, 77 HTTP operations (+ 2 system routes)
+│   │   │   ├── auth.py                   # OTP/link verification, login, Google, SMTP, password/avatar
 │   │   │   ├── profile.py                # Master profile CRUD & one-click resume sync
 │   │   │   ├── skills.py                 # Taxonomy search, category list & normalization
 │   │   │   ├── resume.py                 # Upload, Builder CRUD, PDF Export, GitHub Repo Analyzer
-│   │   │   ├── job.py                    # Job description NLP analysis & CRUD
+│   │   │   ├── job.py                    # JD analysis, file/URL/JSON-LD import & CRUD
+│   │   │   ├── discovery.py              # Search runs, ranking, preferences, saved/applied jobs
 │   │   │   ├── match.py                  # Hybrid matching, gap reports & AI insights refresh
 │   │   │   ├── recommendation.py         # Gap roadmaps, custom AI roadmaps & STAR bullets
 │   │   │   ├── dashboard.py              # Completeness, quality indicators & KPI metrics
 │   │   │   ├── admin.py                  # Placement cohort analytics & taxonomy CRUD
 │   │   │   └── deps.py                   # JWT verification & RBAC dependency injection
-│   │   ├── 📂 models/                    # 🗄️ SQLAlchemy 2.0 Relational Models (13 Tables)
+│   │   ├── 📂 models/                    # 23 SQLAlchemy tables; discovery.py adds 9 tables
 │   │   ├── 📂 schemas/                   # 🛡️ Pydantic v2 Request/Response Schemas
-│   │   ├── 📂 services/                  # ⚙️ PDF (ReportLab) & Async Email (SMTP) Services
+│   │   ├── 📂 services/                  # PDF, SMTP, job source adapters & JSON-LD extraction
 │   │   ├── 📂 database/                  # 🛢️ Engine session & automatic taxonomy/admin seeder
 │   │   └── 📂 utils/                     # 🔐 Security (JWT/Bcrypt), File Vault & Taxonomy Data
-│   └── 📂 tests/                         # 🧪 10 Automated Test Modules (100% Pass Rate)
+│   └── 📂 tests/                         # 12 test modules, including discovery & JSON-LD
 │
-└── 📂 frontend/                          # React 19 + Vite + Tailwind CSS Frontend
+├── 📂 skillbit/                          # Active TypeScript frontend launched by start.bat
+│   ├── 📦 package.json                   # React 19, Vite 8, Tailwind CSS 4, React Router 8
+│   └── 📂 src/
+│       ├── 📂 app/routes.ts              # Public routes and protected /app/* screens
+│       ├── 📂 components/AppShell.tsx    # Navigation, settings, avatar and theme controls
+│       ├── 📂 lib/api.ts                 # Typed Fetch API client and backend contracts
+│       ├── 📂 lib/store.tsx              # Shared account and application state
+│       └── 📂 pages/                     # Upload, jobs, match, builder, profile, history, etc.
+│
+└── 📂 frontend/                          # Earlier JSX client (not the default launcher target)
     ├── 📦 package.json                   # Frontend dependencies & scripts
     ├── 🎨 tailwind.config.js             # Custom SaaS color tokens & typography
     ├── 📂 public/                        # Brand logos (favicon.svg, logo.jpg, icons.svg)
@@ -591,7 +900,7 @@ Skillbit/
 Interactive Swagger UI documentation is served automatically at **`http://localhost:8000/docs`** and ReDoc at **`http://localhost:8000/redoc`**.
 
 <details>
-<summary><b>🔽 Click to Expand All 31 REST API Endpoints Across 9 Routers</b></summary>
+<summary><b>🔽 Expand 79 HTTP Operations Across 10 Routers and 2 System Routes</b></summary>
 
 | Router | Method | Endpoint | Auth | Description |
 | :--- | :---: | :--- | :---: | :--- |
@@ -599,13 +908,16 @@ Interactive Swagger UI documentation is served automatically at **`http://localh
 | **System** | `GET` | `/health` | Public | Liveness health check (`{"status": "ok"}`) |
 | **Auth** | `GET` | `/api/auth/config` | Public | Public Google OAuth Client ID configuration |
 | **Auth** | `POST` | `/api/auth/register` | Public | Register candidate account, issue verification token & send mail |
-| **Auth** | `POST` | `/api/auth/verify-email` | Public | Verify candidate email with 1-click token & auto-authenticate |
+| **Auth** | `POST` | `/api/auth/verify-otp` | Public | Verify six-digit email code and establish a JWT session |
+| **Auth** | `POST`, `GET` | `/api/auth/verify-email` | Public | Verify activation token and establish a JWT session |
 | **Auth** | `POST` | `/api/auth/resend-verification` | Public | Resend time-limited verification email link |
 | **Auth** | `POST` | `/api/auth/login` | Public | Authenticate email/password & issue HS256 JWT token |
 | **Auth** | `POST` | `/api/auth/google` | Public | Verify Google OAuth ID token, auto-provision user & issue JWT |
 | **Auth** | `GET` | `/api/auth/me` | User | Retrieve currently authenticated user details |
 | **Auth** | `GET` | `/api/auth/smtp-status` | Public | Verify SMTP server connectivity status |
 | **Auth** | `POST` | `/api/auth/test-email` | User | Dispatch asynchronous test email via SMTP |
+| **Auth** | `POST` | `/api/auth/change-password` | User | Change the authenticated account password |
+| **Auth** | `PUT`, `POST` | `/api/auth/picture` | User | Set a picture URL/data URI, or clear the picture |
 | **Profile** | `GET` | `/api/profile` | User | Retrieve full Master Profile (education, experience, projects, skills) |
 | **Profile** | `PUT` | `/api/profile` | User | Update headline, summary, location, and social URLs |
 | **Profile** | `POST` | `/api/profile/sync-from-resume` | User | Auto-populate Master Profile from latest parsed resume |
@@ -628,6 +940,10 @@ Interactive Swagger UI documentation is served automatically at **`http://localh
 | **Resume** | `DELETE` | `/api/resume/{id}` | User | Delete resume record and safely purge private file |
 | **Resume** | `GET` | `/api/resume/{id}/export` | User | Generate & download single-column ATS PDF via ReportLab |
 | **Resume** | `POST` | `/api/resume/analyze-repo` | User | Fetch GitHub repo metadata & synthesize STAR project bullets |
+| **Resume** | `POST` | `/api/resume/auto-format` | User | Format structured content or messy text into editable resume sections |
+| **Job** | `POST` | `/api/job/extract-file` | User | Parse PDF/DOCX/TXT JD and infer role/company/skills |
+| **Job** | `POST` | `/api/job/extract-url` | User | Import a public JobPosting JSON-LD page or direct PDF URL |
+| **Job** | `POST` | `/api/job/extract-json-ld` | User | Extract Schema.org company, role, and description without an LLM |
 | **Job** | `POST` | `/api/job/analyze` | User | Segment JD into Required/Preferred skills & infer seniority level |
 | **Job** | `GET` | `/api/job` | User | List all analyzed target job descriptions for the user |
 | **Job** | `GET` | `/api/job/{id}` | User | Retrieve a specific job description and extracted skill weights |
@@ -636,6 +952,7 @@ Interactive Swagger UI documentation is served automatically at **`http://localh
 | **Match** | `POST` | `/api/match/analyze` | User | Execute hybrid matching, 4-tier gap analysis & LLM executive insights |
 | **Match** | `GET` | `/api/match/history` | User | List historical match evaluations for the current user |
 | **Match** | `GET` | `/api/match/{analysis_id}` | User | Retrieve full match report, sub-scores, and gap breakdown |
+| **Match** | `DELETE` | `/api/match/{analysis_id}` | User | Delete an owned analysis and associated gaps/roadmaps |
 | **Match** | `POST` | `/api/match/{analysis_id}/ai-insights` | User | Regenerate LLM executive gap insights for an analysis |
 | **Recommend** | `GET` | `/api/recommendations/{analysis_id}` | User | Get/generate 4-stage learning roadmaps for all gaps in an analysis |
 | **Recommend** | `POST` | `/api/recommendations/generate-roadmap` | User | On-demand 4-stage sequential AI roadmap for any custom skill & role |
@@ -644,6 +961,26 @@ Interactive Swagger UI documentation is served automatically at **`http://localh
 | **Admin** | `GET` | `/api/admin/metrics` | Admin | University placement cohort readiness stats & top missing skills |
 | **Admin** | `POST` | `/api/admin/skills` | Admin | Register a new canonical skill and aliases into taxonomy |
 | **Admin** | `DELETE` | `/api/admin/skills/{skill_id}` | Admin | Delete a canonical skill from the taxonomy |
+| **Discovery** | `GET` | `/api/discovery/sources` | User | List registered job sources and integration availability |
+| **Discovery** | `GET` | `/api/discovery/candidate-context` | User | Retrieve/build unified candidate snapshot |
+| **Discovery** | `POST` | `/api/discovery/candidate-context/rebuild` | User | Rebuild snapshot from profile and resumes |
+| **Discovery** | `GET`, `PUT` | `/api/discovery/preferences` | User | Read/update job preferences, weights, and explanation consent |
+| **Discovery** | `POST` | `/api/discovery/search` | User | Start synchronous or background discovery run |
+| **Discovery** | `GET` | `/api/discovery/search/{search_run_id}` | User | Poll an owned search run's progress and source results |
+| **Discovery** | `POST` | `/api/discovery/search/{search_run_id}/cancel` | User | Request cancellation of an owned run |
+| **Discovery** | `GET` | `/api/discovery/search-history` | User | List previous discovery runs |
+| **Discovery** | `GET` | `/api/discovery/recommendations` | User | Filter personalized job recommendations |
+| **Discovery** | `GET` | `/api/discovery/jobs/{job_id}` | User | Retrieve detailed fit, eligibility, provenance, and resume comparison |
+| **Discovery** | `GET` | `/api/discovery/jobs/{job_id}/explanation` | User | Retrieve/refresh personalized recommendation explanation |
+| **Discovery** | `POST` | `/api/discovery/jobs/{job_id}/verify` | User | Recheck listing availability |
+| **Discovery** | `POST`, `DELETE` | `/api/discovery/jobs/{job_id}/save` | User | Bookmark/unbookmark a listing |
+| **Discovery** | `GET` | `/api/discovery/saved` | User | List bookmarked jobs |
+| **Discovery** | `POST` | `/api/discovery/jobs/{job_id}/dismiss` | User | Hide a recommendation |
+| **Discovery** | `POST` | `/api/discovery/jobs/{job_id}/undismiss` | User | Restore a hidden recommendation |
+| **Discovery** | `POST` | `/api/discovery/jobs/{job_id}/apply` | User | Record/update application status, notes, URL, and chosen resume |
+| **Discovery** | `GET` | `/api/discovery/applications` | User | List tracked applications |
+
+Each method/path pair counts as one operation. The undocumented `/favicon.ico` helper and automatically generated docs/OpenAPI routes are excluded. Path parameter names such as `{id}` are abbreviated in some entries above.
 
 </details>
 
@@ -653,7 +990,7 @@ Interactive Swagger UI documentation is served automatically at **`http://localh
 
 ### Prerequisites
 * **Python**: `3.12+` (`3.14` fully supported)
-* **Node.js**: `18.0+` & `npm`
+* **Node.js**: `22.12+` & `npm` (compatible with the active Vite 8 client)
 * **Git**
 
 ### ⚡ Option A: One-Click Windows Startup
@@ -683,14 +1020,16 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 * **API Base URL**: `http://localhost:8000/api`
 * **Interactive Swagger Docs**: `http://localhost:8000/docs`
 
-#### 2. Frontend Setup (`Port 5173`)
+#### 2. Active Frontend Setup (`Port 5173`)
 ```powershell
-# In a new terminal window:
-cd frontend
+# In a new terminal window, from the repository root:
+cd skillbit
 npm install
 npm run dev
 ```
 * **Web Application**: `http://localhost:5173`
+* **Backend override**: Set `VITE_API_URL` in `skillbit/.env` if the API is not at `http://localhost:8000/api`.
+* **Earlier client**: `frontend/` can be started separately, but it does not expose the complete current UI.
 
 ---
 
@@ -698,9 +1037,10 @@ npm run dev
 SkillBit runs **out-of-the-box with zero configuration** using SQLite and its built-in deterministic CareerTech fallback engine. To enable live cloud LLM inference, Google OAuth, or SMTP emails, create `backend/.env`:
 
 ```ini
-# Security & Database
+# Security & Database (use a unique secret outside local development)
 SECRET_KEY=your_super_secret_jwt_signing_key_2026
 DATABASE_URL=sqlite:///./app.db
+FRONTEND_URL=http://localhost:5173
 
 # Multi-Provider LLM Keys (Auto-detected in priority order: Groq -> Gemini -> Grok -> OpenAI -> Local)
 DEFAULT_LLM_PROVIDER=auto
@@ -709,7 +1049,7 @@ GEMINI_API_KEY=AIzaSy_your_gemini_api_key_here
 GROK_API_KEY=xai-your_grok_api_key_here
 OPENAI_API_KEY=sk-your_openai_api_key_here
 
-# Google OAuth 2.0 Single Sign-On (Optional - Demo mode works automatically without key)
+# Google OAuth 2.0 Single Sign-On (Optional; configure a client for live Google sign-in)
 GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
@@ -718,15 +1058,26 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your_email@gmail.com
 SMTP_PASSWORD=your_app_password
-SMTP_FROM_EMAIL=noreply@skillbit.ai
+SMTP_FROM_EMAIL=your_email@gmail.com
 SMTP_FROM_NAME=SkillBit
+SMTP_USE_TLS=true
+
+# Job discovery: public adapters need no key; JSearch portal indexing is optional
+ENABLE_LIVE_JOB_DISCOVERY=true
+JOB_SEARCH_TIMEOUT_SECONDS=6.0
+JOB_SEARCH_RATE_LIMIT_RPM=30
+JSEARCH_API_KEY=
 ```
+
+Use a Gmail **App Password**, not your normal account password. If SMTP is unconfigured, retrieve the verification OTP/link from the backend terminal; regular registration still requires verification. Set `FRONTEND_URL` to the client origin used for activation links. Never commit real credentials.
+
+Live search sends queries to external job sources, and JSearch may incur provider charges or rate limits. Configuring a cloud LLM sends prompt content to that provider; discovery explanation consent can be disabled in job preferences. `ENABLE_LIVE_JOB_DISCOVERY=false` skips the public adapters, but the JSearch adapter currently checks only for its API key—leave `JSEARCH_API_KEY` unset too when avoiding external search requests. Other keys listed in `config.py`/the source registry do not by themselves mean the corresponding adapter is implemented.
 
 ### 🔑 Default Seeded Accounts
 On first startup, `init_db.py` automatically seeds administrator credentials:
 * **Admin Email**: `admin@skillbit.ai` (or `admin@careertech.ai`)
 * **Admin Password**: `AdminPass123!`
-* **Candidate Account**: Register any new account at `/register` or click **Continue with Google** for instant auto-provisioned SSO.
+* **Candidate Account**: Register at `/signup` and verify by OTP/link, or use **Continue with Google** with a configured OAuth client. The earlier JSX client uses `/register`.
 
 ---
 
@@ -740,21 +1091,25 @@ SkillBit includes a comprehensive automated test suite (`backend/tests/`) using 
 ```
 
 ### 🧪 Test Suite Coverage Matrix
+This is an inventory of available tests, not a recorded test run. Re-run the suite after code or environment changes.
+
 ```text
 Test Module                             │ Scope & Verification                                     │ Status
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-test_phase1.py                          │ Taxonomy seeding, alias resolution, Bcrypt, JWT, ORM     │ ✅ PASS
-test_api_auth_profile.py                │ Register, Login, Google OAuth auto-provisioning, Profile │ ✅ PASS
-test_resume_ingestion.py                │ Text cleaning, hyphen unwrap, Section & Evidence parser  │ ✅ PASS
-test_job_analyzer.py                    │ Seniority detection, Required vs Preferred JD weights    │ ✅ PASS
-test_matching_and_gaps.py               │ Subword TF-IDF cosine, Multi-factor formula, 4-tier gaps │ ✅ PASS
-test_llm_service.py                     │ Provider discovery, Gap insights, 4-stage roadmaps       │ ✅ PASS
-test_recommendations.py                 │ Missing vs Weak gap recommendations, STAR bullet API     │ ✅ PASS
-test_pdf_export.py                      │ ReportLab binary %PDF generation & streaming endpoint    │ ✅ PASS
-test_resume_repo_analyzer.py            │ GitHub URL parser, empty STAR fallback, clickable links  │ ✅ PASS
-test_dashboard_and_admin.py             │ Dashboard KPIs, Admin cohort analytics, 403 RBAC guard   │ ✅ PASS
+test_phase1.py                          │ Taxonomy seeding, alias resolution, Bcrypt, JWT, ORM     │ Run locally
+test_api_auth_profile.py                │ Register, Login, Google OAuth auto-provisioning, Profile │ Run locally
+test_resume_ingestion.py                │ Text cleaning, hyphen unwrap, Section & Evidence parser  │ Run locally
+test_job_analyzer.py                    │ Seniority detection, Required vs Preferred JD weights    │ Run locally
+test_matching_and_gaps.py               │ Subword TF-IDF cosine, Multi-factor formula, 4-tier gaps │ Run locally
+test_llm_service.py                     │ Provider discovery, Gap insights, 4-stage roadmaps       │ Run locally
+test_recommendations.py                 │ Missing vs Weak gap recommendations, STAR bullet API     │ Run locally
+test_pdf_export.py                      │ ReportLab binary %PDF generation & streaming endpoint    │ Run locally
+test_resume_repo_analyzer.py            │ GitHub URL parser, empty STAR fallback, clickable links  │ Run locally
+test_dashboard_and_admin.py             │ Dashboard KPIs, Admin cohort analytics, 403 RBAC guard   │ Run locally
+test_job_discovery_engine.py            │ Candidate snapshots, discovery ranking and job tracking │ Run locally
+test_json_ld_extractor.py               │ Schema.org JobPosting extraction and nested JSON-LD     │ Run locally
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL: 10 Test Suites                   │ 32+ Automated Unit & Integration Verifications           │ 100% PASS
+TOTAL: 12 Test Modules                  │ Unit and integration tests                              │ Run locally
 ```
 
 ---
